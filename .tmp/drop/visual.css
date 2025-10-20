@@ -1,0 +1,227 @@
+.datagrid {
+  cursor: default;
+}
+.datagrid {
+  cursor: default;
+  font-family: 'Segoe UI', wf_segoe-ui_normal, helvetica, arial, sans-serif;
+  font-size: 14px;
+  color: #1E2323;
+  border-collapse: collapse;
+  width: 100%;
+  /* Общие стили для всех ячеек */
+  /* Стили для обычных ячеек данных */
+  /* Стили для заголовков строк */
+  /* Стили для обычных заголовков колонок */
+  /* Стили для верхних строк заголовков */
+  /* Стили для средних строк данных */
+  /* СТИЛИ ДЛЯ ВСЕЙ СТРОКИ С ТОТАЛАМИ */
+  /* Стили для отдельных колонок с тоталами */
+  /* Стили для пустых ячеек - УБРАЛ ПРОЧЕРКИ */
+  /* В строке тоталов пустые ячейки тоже должны быть синими */
+  /* Стили для ячеек с числовыми значениями */
+  /* Стили для заголовков с выравниванием */
+  /* Полосы зебры для лучшей читаемости */
+  /* Стили для различных уровней вложенности */
+  /* Улучшенные стили для границ заголовков */
+  /* Адаптивность для мобильных устройств */
+  /* Стили для скролла если таблица большая */
+  overflow-x: auto;
+}
+.datagrid table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  border: 1px solid #E1E1E1;
+}
+.datagrid th,
+.datagrid td {
+  padding: 10px 5px 11px 5px;
+  text-align: left;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+  border: 1px solid #E1E1E1;
+}
+.datagrid td {
+  background-color: #FFFFFF;
+  font-size: 14px;
+  color: #1E2323;
+}
+.datagrid .rowsHeader {
+  background-color: #F8F9FA;
+  font-weight: 600;
+  color: #1E2323;
+  border-right: 2px solid #D0D5D8;
+  min-width: 150px;
+  position: sticky;
+  left: 0;
+  z-index: 10;
+}
+.datagrid .formatColumnNodes {
+  background-color: #F8F9FA;
+  font-weight: 600;
+  color: #1E2323;
+  text-align: center;
+}
+.datagrid .formatColumnNodes[colspan] {
+  text-align: center;
+  font-size: 15px;
+}
+.datagrid .topRow th {
+  background-color: #F0F2F4;
+  font-weight: 700;
+  border-bottom: 2px solid #D0D5D8;
+}
+.datagrid .topRow th.formatColumnNodes {
+  background-color: #E8ECEF;
+  font-size: 13px;
+  padding: 8px 5px;
+}
+.datagrid .midRow th.formatRowNodes {
+  background-color: #FFFFFF;
+  font-weight: 600;
+  color: #1E2323;
+  border-right: 2px solid #D0D5D8;
+}
+.datagrid .midRow th.formatRowNodes[style*="text-align: left"] {
+  padding-left: 5px;
+}
+.datagrid .midRow td {
+  background-color: #FFFFFF;
+  transition: background-color 0.2s ease;
+}
+.datagrid .midRow td:hover {
+  background-color: #F8F9FA;
+}
+.datagrid .totalRow {
+  background-color: #66B0C2 !important;
+  /* Все ячейки в строке тоталов */
+  /* Специфичные стили для заголовков в строке тоталов */
+}
+.datagrid .totalRow th,
+.datagrid .totalRow td {
+  background-color: #66B0C2 !important;
+  color: #FFFFFF !important;
+  font-weight: bold !important;
+  border-color: #5A9BAD !important;
+}
+.datagrid .totalRow th.formatRowNodes {
+  background-color: #66B0C2 !important;
+  color: #FFFFFF !important;
+  font-size: 15px;
+  border-right: 2px solid #5A9BAD !important;
+  padding: 11px 5px 10px 5px !important;
+}
+.datagrid .totalColumn {
+  background-color: #66B0C2 !important;
+  color: #FFFFFF !important;
+  font-weight: bold !important;
+  border-color: #5A9BAD !important;
+}
+.datagrid .totalColumn.formatColumnNodes {
+  background-color: #66B0C2 !important;
+  color: #FFFFFF !important;
+}
+.datagrid td:empty {
+  background-color: #FAFBFC;
+}
+.datagrid .totalRow td:empty {
+  background-color: #66B0C2 !important;
+}
+.datagrid td:not(:empty) {
+  text-align: right;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+.datagrid th[style*="text-align: left"] {
+  text-align: left !important;
+}
+.datagrid th[style*="text-align: center"] {
+  text-align: center !important;
+}
+.datagrid th[style*="text-align: right"] {
+  text-align: right !important;
+}
+.datagrid .midRow:nth-child(even) td {
+  background-color: #FAFBFC;
+}
+.datagrid .midRow:nth-child(even) td:hover {
+  background-color: #F0F2F4;
+}
+.datagrid .midRow:nth-child(even).totalRow td {
+  background-color: #66B0C2 !important;
+}
+.datagrid th.formatRowNodes:not([style*="nbsp;"]) {
+  font-size: 15px;
+  background-color: #F0F2F4;
+}
+.datagrid th.formatRowNodes[style*="nbsp;"] {
+  font-size: 14px;
+}
+.datagrid th.formatRowNodes[style*="nbsp;&nbsp;&nbsp;&nbsp;"] {
+  font-size: 13px;
+  color: #5A6268;
+}
+.datagrid .topRow th {
+  border-bottom: 2px solid #D0D5D8;
+}
+@media (max-width: 768px) {
+  .datagrid {
+    font-size: 12px;
+  }
+  .datagrid th,
+  .datagrid td {
+    padding: 6px 3px 7px 3px;
+  }
+  .datagrid .rowsHeader {
+    min-width: 120px;
+  }
+}
+.datagrid::-webkit-scrollbar {
+  height: 8px;
+}
+.datagrid::-webkit-scrollbar-track {
+  background: #F1F1F1;
+}
+.datagrid::-webkit-scrollbar-thumb {
+  background: #C1C1C1;
+  border-radius: 4px;
+}
+.datagrid::-webkit-scrollbar-thumb:hover {
+  background: #A8A8A8;
+}
+/* Дополнительные утилитарные классы */
+.text-right {
+  text-align: right !important;
+}
+.text-center {
+  text-align: center !important;
+}
+.text-left {
+  text-align: left !important;
+}
+.border-top {
+  border-top: 2px solid #E1E1E1 !important;
+}
+.border-bottom {
+  border-bottom: 2px solid #E1E1E1 !important;
+}
+/* Анимации для плавного изменения */
+.datagrid th,
+.datagrid td {
+  transition: all 0.2s ease-in-out;
+}
+/* Стили для состояний */
+.highlight {
+  background-color: #FFF3CD !important;
+  color: #856404 !important;
+}
+.positive {
+  color: #155724;
+  background-color: #D4EDDA;
+}
+.negative {
+  color: #721C24;
+  background-color: #F8D7DA;
+}
+
