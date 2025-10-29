@@ -1,6 +1,7 @@
+import "./../style/excelDownloadModal.css";
 export declare class ExcelDownloader {
     excelDownloaderMethod(table: HTMLElement, grid: HTMLElement): void;
-    private exportToXLSXSimple;
-    private tryOpenInNewWindow;
-    private showDataModal;
+    private exportToCSV;
+    private showDownloadModal;
+    private copyToClipboard;
 }

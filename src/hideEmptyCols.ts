@@ -68,7 +68,7 @@ export class MatrixEmptyColumnsHider {
                 let headersOfColumns = topRows[topRowNum].getElementsByClassName('formatColumnNodes');
 
                 for (let headerNum = 0; headerNum < headersOfColumns.length; headerNum++ ) {
-                    console.log("headersOfColumns[headerNum]", headersOfColumns[headerNum]);
+                    //console.log("headersOfColumns[headerNum]", headersOfColumns[headerNum]);
                     headersOfColumns[headerNum].setAttribute('colspan',currentHeadersColSpan.toString()); //проставляем нужный colspan
                 }
             }

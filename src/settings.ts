@@ -10,8 +10,8 @@ export class VisualSettings extends DataViewObjectsParser {
 }
 
 export class Subtotals {
-    public rowSubtotals: boolean = true
-    public columnSubtotals: boolean = true
+    public rowSubtotals: boolean = true;
+    public columnSubtotals: boolean = true;
 }
 
 export class HideEmptyCols {
