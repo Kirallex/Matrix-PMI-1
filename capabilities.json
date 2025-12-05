@@ -25,12 +25,22 @@
                 "rows": {
                     "for": {
                         "in": "Rows"
-                    }
+                    },
+                "dataReductionAlgorithm": {
+                        "top": {
+                        "count": 1000
+                        }
+                }
                 },
                 "columns": {
                     "for": {
                         "in": "Columns"
-                    }
+                    },
+                "dataReductionAlgorithm": {
+                        "top": {
+                        "count": 100
+                        }
+                }
                 },
                 "values": {
                     "select": [

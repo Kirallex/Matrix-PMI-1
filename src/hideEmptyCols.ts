@@ -18,7 +18,7 @@ export class MatrixEmptyColumnsHider {
             }
         }
 
-        console.log("colCount", colCount);
+        //console.log("colCount", colCount);
 
         for (let col = 0; col < colCount; col++) { //colCount - количество колонок с данными в строке
             let isEmpty:boolean = true;

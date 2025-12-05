@@ -10,7 +10,7 @@ export class MatrixDataviewHtmlFormatter {
         htmlElement.classList.add('datagrid');
         const tableElement = document.createElement('table');
         const tbodyElement = document.createElement('tbody');
-        
+        //const tableForDownload: IMatrixData;
         // Формируем заголовки колонок на основе структуры matrix.columns
         MatrixDataviewHtmlFormatter.formatColumnHeaders(matrix.columns, matrix.rows, tbodyElement);
         
@@ -199,6 +199,7 @@ export class MatrixDataviewHtmlFormatter {
             thElement.setAttribute('class', 'formatRowNodes');
             thElement.style.textAlign = 'left';
             let headerText = "";
+            //добавляем отступы в зависимости от уровня
             for (let level = 0; level < root.level; level++) {
                 headerText += '\u00A0\u00A0\u00A0\u00A0';
             }

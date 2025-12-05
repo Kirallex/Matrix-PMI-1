@@ -1,11 +1,27 @@
+//Промпт для начала диалога с ИИ:
+// 1) Контекст
+// Я разрабатываю кастомную визуализацию для Power BI при помощи библиотеки power-bi-visual-tools. Кастомная визуализяция имеет тип matrix. 
+// 2) В составе проекта имеются файлы: 
+// downloadExcel.ts
+// hideEmptyCols.ts
+// matrixDataViewHtmlFormatter.ts
+// objectEnumerationBuilder.ts
+// settings.ts
+// visual.ts
+
+
+
 "use strict";
 import "./../style/visual.less";
 import powerbi from "powerbi-visuals-api";
 import { MatrixDataviewHtmlFormatter } from "./matrixDataViewHtmlFormatter";
+import { MatrixDataViewDictFormatter } from "./___matrixDataViewDictFormatter___"; //!!!!!!!!!!!!!!
+//import { SimpleDataService } from "./dataService"; //!!!!!!!!!!!!!!
 import IVisual = powerbi.extensibility.visual.IVisual;
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import DataView = powerbi.DataView;
+import Host = powerbi.extensibility.visual.IVisualHost; //!!!!!!!!!!!!
 import { VisualSettings } from "./settings";
 import { ObjectEnumerationBuilder } from "./objectEnumerationBuilder";
 import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
@@ -15,16 +31,20 @@ import {ExcelDownloader} from "./downloadExcel"
 export class Visual implements IVisual {
     private target: HTMLElement;
     private settings: VisualSettings;
+    private host: Host;
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
+        this.host = options.host;
     }
 
-    public update(options: VisualUpdateOptions) {
+    public update(options: VisualUpdateOptions, host: Host) {
         if (!options?.dataViews?.[0]) {
             this.clearDisplay();
             return;
         }
+
+        //console.log("host", this.host); //!!!!!!!!!!!!!!!
 
         const dataView = options.dataViews[0];
         console.log("dataView", dataView);
@@ -57,14 +77,16 @@ export class Visual implements IVisual {
         this.target.appendChild(buttonContainer);
 
         const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(dataView.matrix);
-        
+        const formattedMatrixForCsv = MatrixDataViewDictFormatter.formatDataViewMatrix(dataView.matrix);
+        //const hostCheck = SimpleDataService.checkData(this.host, dataView);
+        console.log("formattedMatrixForCsv", formattedMatrixForCsv);
         //если hideColsLabel выставлен в True, то применяем applyHideEmptyColumnsSetting
         if (this.settings.hideEmptyCols.hideColsLabel) {
             this.applyHideEmptyColumnsSetting(formattedMatrix)
         }
 
         //Применяем excel downloader (мб поставить это свойство в самом конце)
-        this.applyExcelDownloader(formattedMatrix, this.target);
+        this.applyExcelDownloader(formattedMatrix, this.target, dataView);
 
         this.target.appendChild(formattedMatrix);
 
@@ -118,8 +140,8 @@ export class Visual implements IVisual {
         
     }
 
-    private applyExcelDownloader(formattedMatrix: HTMLElement, grid: HTMLElement): void {
-        const downloader = new ExcelDownloader();
+    private applyExcelDownloader(formattedMatrix: HTMLElement, grid: HTMLElement, dataView: powerbi.DataView): void {
+        const downloader = new ExcelDownloader(this.host, dataView);
         // Если настройка включена - скрываем пустые колонки
         downloader.excelDownloaderMethod(formattedMatrix, grid); 
     }
