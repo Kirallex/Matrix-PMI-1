@@ -1,13 +1,13 @@
 import powerbi from "powerbi-visuals-api";
 export declare class DataLoader {
     /**
-     * Загружает все доступные данные используя fetchMoreData
+     * Просто возвращает переданные данные без попытки загрузить больше
      */
     static loadAllData(host: powerbi.extensibility.visual.IVisualHost, initialDataView: powerbi.DataView): Promise<powerbi.DataView>;
     /**
      * Задержка выполнения
      */
-    private static delay;
+    static delay(ms: number): Promise<void>;
     /**
      * Подсчитывает количество строк в dataView
      */
@@ -16,8 +16,4 @@ export declare class DataLoader {
      * Рекурсивно подсчитывает дочерние строки
      */
     private static countChildRows;
-    /**
-     * Проверяет, поддерживает ли визуализация загрузку дополнительных данных
-     */
-    static canFetchMoreData(host: powerbi.extensibility.visual.IVisualHost): boolean;
 }

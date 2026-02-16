@@ -9,9 +9,6 @@ export class ExcelDownloader {
     private host: powerbi.extensibility.visual.IVisualHost;
     private currentDataView: powerbi.DataView;
 
-    /**
-     * Конструктор теперь принимает host и dataView
-     */
     constructor(host: powerbi.extensibility.visual.IVisualHost, dataView: powerbi.DataView) {
         this.host = host;
         this.currentDataView = dataView;
@@ -25,55 +22,35 @@ export class ExcelDownloader {
             return;
         }
 
-        // const exportToExcel = () => {
-        //     try {
-        //         this.exportToCSV(table);
-        //     } catch (error) {
-        //         console.error('Error exporting to CSV:', error);
-        //     }
-        // };
-
         const exportToExcel = async () => {
             try {
-                // Используем DataLoader для получения всех данных
+                // Используем DataLoader для получения данных
                 await this.exportFromDataView();
             } catch (error) {
                 console.error('Error exporting to CSV:', error);
                 // Fallback: если есть DOM таблица, можно попробовать из нее
-                //const table = grid.querySelector('table');
                 if (table) {
                     this.exportToCSV(table as HTMLElement);
                 }
             }
         };
 
-        
-
         exportBtn.addEventListener('click', exportToExcel);
     }
 
-
     private async exportFromDataView(): Promise<void> {
         console.log("Starting export from DataView...");
-        
-        // Проверяем, поддерживает ли host загрузку дополнительных данных
-        const canFetchMore = DataLoader.canFetchMoreData(this.host);
-        console.log("Can fetch more data:", canFetchMore);
         
         // Получаем информацию о текущих данных
         const initialRowCount = DataLoader.countRows(this.currentDataView);
         console.log(`Initial data rows: ${initialRowCount}`);
         
-        // Пытаемся загрузить все данные
-        console.log("Loading all available data...");
+        // Загружаем данные (теперь просто используем текущие данные)
+        console.log("Loading available data...");
         const allDataView = await DataLoader.loadAllData(this.host, this.currentDataView);
         
         const finalRowCount = DataLoader.countRows(allDataView);
         console.log(`Final data rows: ${finalRowCount}`);
-        
-        if (finalRowCount > initialRowCount) {
-            console.log(`Loaded ${finalRowCount - initialRowCount} additional rows`);
-        }
         
         // Преобразуем DataView в CSV
         this.convertDataViewToCsv(allDataView);
@@ -90,19 +67,8 @@ export class ExcelDownloader {
 
         try {
             const matrixData = MatrixDataViewDictFormatter.formatDataViewMatrix(dataView.matrix);
-
-            //this.showDataInfo(dataView);
-
-            // Преобразуем структурированные данные в CSV
             const csv = this.convertMatrixDataToCsv(matrixData);
-            
-            // Создаем и скачиваем CSV файл
             this.downloadCsvFile(csv);
-            
-            // TODO: Реализуйте преобразование DataView в CSV
-            // const matrixData = MatrixDataViewDictFormatter.formatDataViewMatrix(dataView.matrix);
-            // const csv = this.convertMatrixDataToCsv(matrixData);
-            // this.downloadCsvFile(csv);
             
         } catch (error) {
             console.error('Error converting DataView to CSV:', error);
@@ -110,7 +76,7 @@ export class ExcelDownloader {
         }
     }
 
-        /**
+    /**
      * Преобразует структурированные данные матрицы в CSV строку
      */
     private convertMatrixDataToCsv(matrixData: IMatrixData): string {
@@ -133,7 +99,6 @@ export class ExcelDownloader {
         
         return csv;
     }
-
 
     /**
      * Экранирует строку для CSV формата
@@ -163,23 +128,6 @@ export class ExcelDownloader {
         const blobUrl = URL.createObjectURL(blob);
         
         this.showDownloadModal(blobUrl);
-    }
-
-        /**
-     * Вспомогательный метод для отображения информации о данных
-     */
-    private showDataInfo(dataView: powerbi.DataView): void { //УДАЛИТЬ 
-        const rowCount = DataLoader.countRows(dataView);
-        const infoMessage = `Data ready for export:\nRows: ${rowCount}`;
-        
-        alert(infoMessage); // Или покажите в модальном окне
-        
-        // Можно также вывести в консоль для отладки
-        console.log("DataView structure:", {
-            matrix: !!dataView.matrix,
-            rows: dataView.matrix?.rows?.root?.children?.length || 0,
-            columns: dataView.matrix?.columns?.root?.children?.length || 0
-        });
     }
 
     private exportToCSV(table: HTMLElement): void {

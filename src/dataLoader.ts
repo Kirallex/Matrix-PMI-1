@@ -2,49 +2,18 @@ import powerbi from "powerbi-visuals-api";
 
 export class DataLoader {
     /**
-     * Загружает все доступные данные используя fetchMoreData
+     * Просто возвращает переданные данные без попытки загрузить больше
      */
     public static async loadAllData(
         host: powerbi.extensibility.visual.IVisualHost,
         initialDataView: powerbi.DataView
     ): Promise<powerbi.DataView> {
         try {
-            console.log("Starting data loading...");
-            console.log(`Initial rows: ${this.countRows(initialDataView)}`);
+            console.log("Data loading (simplified)...");
+            console.log(`Rows: ${this.countRows(initialDataView)}`);
             
-            let currentDataView = initialDataView;
-            let hasMoreData = true;
-            let attempts = 0;
-            const maxAttempts = 50; // Максимальное количество попыток
-            
-            // Пытаемся загрузить больше данных в цикле
-            while (hasMoreData && attempts < maxAttempts) {
-                attempts++;
-                
-                console.log(`Attempt ${attempts}: Requesting more data...`);
-                
-                // fetchMoreData возвращает boolean, а не Promise
-                const canFetchMore = host.fetchMoreData(true);
-                
-                if (canFetchMore) {
-                    console.log(`Attempt ${attempts}: Request accepted, waiting for data...`);
-                    
-                    // Ждем некоторое время для получения данных
-                    await this.delay(500);
-                    
-                    // На этом этапе данные должны прийти в следующем вызове update
-                    // Но мы не можем их получить здесь напрямую
-                    // Эта функция должна быть вызвана из visual.ts
-                    
-                    hasMoreData = false; // Для простоты загружаем только один раз
-                } else {
-                    console.log(`Attempt ${attempts}: No more data available`);
-                    hasMoreData = false;
-                }
-            }
-            
-            console.log(`Data loading completed. Total attempts: ${attempts}`);
-            return currentDataView;
+            // Возвращаем исходные данные без попытки загрузить больше
+            return initialDataView;
             
         } catch (error) {
             console.error('Error in loadAllData:', error);
@@ -55,7 +24,7 @@ export class DataLoader {
     /**
      * Задержка выполнения
      */
-    private static delay(ms: number): Promise<void> {
+    public static delay(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
     
@@ -89,12 +58,5 @@ export class DataLoader {
             }
         }
         return count;
-    }
-    
-    /**
-     * Проверяет, поддерживает ли визуализация загрузку дополнительных данных
-     */
-    public static canFetchMoreData(host: powerbi.extensibility.visual.IVisualHost): boolean {
-        return typeof host.fetchMoreData === 'function';
     }
 }
