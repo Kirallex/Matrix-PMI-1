@@ -1,16 +1,3 @@
-//Промпт для начала диалога с ИИ:
-// 1) Контекст
-// Я разрабатываю кастомную визуализацию для Power BI при помощи библиотеки power-bi-visual-tools. Кастомная визуализяция имеет тип matrix. 
-// 2) В составе проекта имеются файлы: 
-// downloadExcel.ts
-// hideEmptyCols.ts
-// matrixDataViewHtmlFormatter.ts
-// objectEnumerationBuilder.ts
-// settings.ts
-// visual.ts
-
-
-
 "use strict";
 import "./../style/visual.less";
 import powerbi from "powerbi-visuals-api";
@@ -27,12 +14,14 @@ import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInst
 import {MatrixEmptyColumnsHider} from "./hideEmptyCols";
 import {ExcelDownloader} from "./downloadExcel";
 
-
 export class Visual implements IVisual {
     private target: HTMLElement;
     private settings: VisualSettings;
     private host: Host;
     private currentDataView: DataView;
+    private isFetchingData: boolean = false;
+    private finalDataView: DataView | null = null;
+    private segmentCount: number = 0;
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
@@ -47,12 +36,17 @@ export class Visual implements IVisual {
 
         const dataView = options.dataViews[0];
         this.currentDataView = dataView;
+
+        // Если идёт сбор данных
+        if (this.isFetchingData) {
+            this.processDataSegment(dataView);
+            return; // Не рендерим визуал во время сбора
+        }
+
         console.log("dataView", dataView);
         
-        // Автоматический парсинг настроек из DataView
         this.settings = VisualSettings.parse(dataView) as VisualSettings;
         
-        // Проверка данных матрицы
         if (!dataView.matrix?.rows?.root?.children?.length || 
             !dataView.matrix?.columns?.root?.children?.length) {
             this.clearDisplay();
@@ -67,9 +61,8 @@ export class Visual implements IVisual {
         button.setAttribute("type", "button");
         button.innerText = "Export Data";
         
-        // Добавляем обработчик клика
         button.addEventListener('click', () => {
-            this.handleExportClick();
+            this.startDataFetching();
         });
     
         buttonContainer.appendChild(button);
@@ -79,7 +72,6 @@ export class Visual implements IVisual {
         const formattedDictMatrix = MatrixDataViewDictFormatter.formatDataViewMatrix(dataView.matrix);
         console.log(formattedDictMatrix);
         
-        
         if (this.settings.hideEmptyCols.hideColsLabel) {
             this.applyHideEmptyColumnsSetting(formattedMatrix)
         }
@@ -88,102 +80,129 @@ export class Visual implements IVisual {
     }
 
     /**
-     * Обработчик клика по кнопке экспорта
+     * Начинает процесс сбора данных
      */
-    private handleExportClick(): void {
-        console.log("Export button clicked");
-        
-        // Блокируем кнопку на время экспорта
-        const button = this.target.querySelector('#exportBtn') as HTMLButtonElement;
-        const originalText = button.textContent;
-        button.disabled = true;
-        button.textContent = 'Exporting...';
-        
+    private startDataFetching(): void {
+        console.log("=== Начало сбора данных ===");
+        this.isFetchingData = true;
+        this.segmentCount = 0;
+        this.finalDataView = null;
+
+        // Проверяем, есть ли сегмент в текущих данных
+        if (this.currentDataView.metadata?.segment) {
+            // Есть дополнительные данные, запрашиваем первый сегмент
+            console.log("Есть сегмент данных, запрашиваем...");
+            this.requestMoreData();
+        } else {
+            // Нет сегментов — сразу экспортируем текущие данные
+            console.log("Нет сегментов данных, экспортируем текущие данные.");
+            this.finishDataFetching(this.currentDataView);
+        }
+    }
+
+    /**
+     * Запрашивает дополнительные данные
+     */
+    private requestMoreData(): void {
         try {
-            // Пробуем получить больше данных через fetchMoreData
-            console.log("Trying to fetch more data...");
-            const canFetchMore = this.host.fetchMoreData(true);
-            
-            if (canFetchMore) {
-                console.log("More data requested, it will come in next update");
-                // Здесь можно добавить логику для сбора нескольких порций данных
-                // Но для минимальных изменений просто экспортируем текущие данные
-                this.performExport();
-            } else {
-                console.log("No more data available, exporting current data");
-                this.performExport();
+            const accepted = this.host.fetchMoreData(true); // режим агрегации
+            if (!accepted) {
+                console.log("fetchMoreData вернул false — больше данных нет");
+                this.finishDataFetching(this.currentDataView);
             }
         } catch (error) {
-            console.error("Error in fetchMoreData:", error);
-            // В случае ошибки просто экспортируем текущие данные
-            this.performExport();
-        } finally {
-            // Разблокируем кнопку через некоторое время
-            setTimeout(() => {
-                button.textContent = originalText;
-                button.disabled = false;
-            }, 2000);
+            console.error("Ошибка fetchMoreData:", error);
+            this.finishDataFetching(this.currentDataView);
         }
     }
 
     /**
-     * Выполняет экспорт текущих данных
+     * Обрабатывает полученный сегмент данных
      */
-    private performExport(): void {
-        if (!this.currentDataView) {
-            console.error("No data to export");
-            return;
-        }
-        
-        // Просто создаем ExcelDownloader и вызываем exportFromDataView
-        const downloader = new ExcelDownloader(this.host, this.currentDataView);
-        
-        // Вызываем экспорт напрямую (нужно будет сделать метод публичным)
-        // Для минимальных изменений используем существующий подход
-        this.directExport(downloader);
-    }
+    private processDataSegment(dataView: DataView): void {
+        this.segmentCount++;
+        this.finalDataView = dataView;
 
-    /**
-     * Прямой экспорт без симуляции
-     */
-    private directExport(downloader: ExcelDownloader): void {
-        // Используем существующий DOM для совместимости
-        const table = this.target.querySelector('table');
-        if (table) {
-            // Используем метод exportFromDataView вместо экспорта из DOM
-            this.callExportFromDataView(downloader);
+        const rowCount = this.countRows(dataView);
+        console.log(`Сегмент ${this.segmentCount}, строк: ${rowCount}`);
+
+        // Проверяем, есть ли ещё сегменты
+        if (dataView.metadata?.segment) {
+            // Ещё есть данные, запрашиваем следующий
+            console.log("Ещё есть сегмент, запрашиваем следующий...");
+            this.requestMoreData();
         } else {
-            console.error("No table found for export");
+            // Сегментов больше нет
+            console.log("Сегментов больше нет, завершаем сбор.");
+            this.finishDataFetching(dataView);
         }
     }
 
     /**
-     * Вызывает exportFromDataView через рефлексию (временное решение)
-     * Лучше сделать метод публичным в ExcelDownloader
+     * Завершает сбор и экспортирует данные
      */
-    private callExportFromDataView(downloader: ExcelDownloader): void {
+    private finishDataFetching(dataView: DataView): void {
+        console.log(`=== Сбор завершён. Сегментов: ${this.segmentCount} ===`);
+        this.isFetchingData = false;
+
+        const rowCount = this.countRows(dataView);
+        console.log(`Всего строк: ${rowCount}`);
+
+        // Экспортируем
+        this.exportData(dataView);
+    }
+
+    /**
+     * Экспортирует данные через ExcelDownloader
+     */
+    private exportData(dataView: DataView): void {
         try {
-            // Используем any для доступа к приватному методу
-            // В будущем лучше сделать метод публичным
-            (downloader as any).exportFromDataView().catch((error: any) => {
-                console.error("Export failed:", error);
-                // Fallback на старый метод
-                const table = this.target.querySelector('table');
-                if (table) {
-                    (downloader as any).exportToCSV(table as HTMLElement);
-                }
-            });
+            const downloader = new ExcelDownloader(this.host, dataView);
+            // Используем приватный метод exportFromDataView через any (он есть в downloadExcel.ts)
+            (downloader as any).exportFromDataView()
+                .then(() => {
+                    console.log("Экспорт успешно завершён");
+                })
+                .catch((err: any) => {
+                    console.error("Ошибка при экспорте из DataView:", err);
+                    // Fallback: экспорт из DOM
+                    const table = this.target.querySelector('table');
+                    if (table) {
+                        (downloader as any).exportToCSV(table as HTMLElement);
+                    }
+                });
         } catch (error) {
-            console.error("Cannot call export method:", error);
+            console.error("Ошибка создания экспортёра:", error);
+        } finally {
+            // Разблокируем кнопку
+            const mainButton = this.target.querySelector('#exportBtn') as HTMLButtonElement;
+            if (mainButton) {
+                mainButton.disabled = false;
+                mainButton.textContent = "Export Data";
+            }
         }
     }
 
     /**
-     * Ключевой метод для отображения свойств в панели форматирования Power BI
+     * Подсчитывает количество строк в dataView
      */
+    private countRows(dataView: DataView): number {
+        if (!dataView?.matrix?.rows?.root?.children) return 0;
+        let count = 0;
+        const countChildren = (nodes: powerbi.DataViewMatrixNode[]) => {
+            for (const node of nodes) {
+                count++;
+                if (node.children) {
+                    countChildren(node.children);
+                }
+            }
+        };
+        countChildren(dataView.matrix.rows.root.children);
+        return count;
+    }
+
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): powerbi.VisualObjectInstanceEnumerationObject {
         const enumeration = new ObjectEnumerationBuilder();
-
         switch (options.objectName) {
             case "subTotals":
                 enumeration.pushInstance({
@@ -196,7 +215,6 @@ export class Visual implements IVisual {
                     }
                 });
                 break;
-                
             case "hideEmptyCols":
                 enumeration.pushInstance({
                     objectName: "hideEmptyCols",
@@ -208,7 +226,6 @@ export class Visual implements IVisual {
                 });
                 break;
         }
-
         return enumeration.complete();
     }
 

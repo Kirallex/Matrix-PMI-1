@@ -9,28 +9,35 @@ export declare class Visual implements IVisual {
     private settings;
     private host;
     private currentDataView;
+    private isFetchingData;
+    private finalDataView;
+    private segmentCount;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
     /**
-     * Обработчик клика по кнопке экспорта
+     * Начинает процесс сбора данных
      */
-    private handleExportClick;
+    private startDataFetching;
     /**
-     * Выполняет экспорт текущих данных
+     * Запрашивает дополнительные данные
      */
-    private performExport;
+    private requestMoreData;
     /**
-     * Прямой экспорт без симуляции
+     * Обрабатывает полученный сегмент данных
      */
-    private directExport;
+    private processDataSegment;
     /**
-     * Вызывает exportFromDataView через рефлексию (временное решение)
-     * Лучше сделать метод публичным в ExcelDownloader
+     * Завершает сбор и экспортирует данные
      */
-    private callExportFromDataView;
+    private finishDataFetching;
     /**
-     * Ключевой метод для отображения свойств в панели форматирования Power BI
+     * Экспортирует данные через ExcelDownloader
      */
+    private exportData;
+    /**
+     * Подсчитывает количество строк в dataView
+     */
+    private countRows;
     enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): powerbi.VisualObjectInstanceEnumerationObject;
     private applyHideEmptyColumnsSetting;
     private clearDisplay;
