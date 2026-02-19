@@ -261,4 +261,14 @@ export class ExcelDownloader {
             button.classList.remove('copied', 'error');
         }, 2000);
     }
+        /**
+     * Публичный метод для экспорта данных из DataView (используется после сбора всех сегментов)
+     */
+    public exportDataView(dataView: powerbi.DataView): void {
+        if (!dataView?.matrix) {
+            console.error('No matrix data available for export');
+            return;
+        }
+        this.convertDataViewToCsv(dataView);
+    }
 }

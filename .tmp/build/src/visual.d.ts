@@ -9,35 +9,21 @@ export declare class Visual implements IVisual {
     private settings;
     private host;
     private currentDataView;
-    private isFetchingData;
-    private finalDataView;
-    private segmentCount;
+    private exportButton;
+    private isExporting;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
     /**
-     * Начинает процесс сбора данных
-     */
-    private startDataFetching;
-    /**
-     * Запрашивает дополнительные данные
-     */
-    private requestMoreData;
-    /**
-     * Обрабатывает полученный сегмент данных
-     */
-    private processDataSegment;
-    /**
-     * Завершает сбор и экспортирует данные
-     */
-    private finishDataFetching;
-    /**
-     * Экспортирует данные через ExcelDownloader
-     */
-    private exportData;
-    /**
-     * Подсчитывает количество строк в dataView
+     * Подсчёт количества строк в матрице (рекурсивно)
      */
     private countRows;
+    private renderVisualization;
+    private handleExportClick;
+    private requestMoreData;
+    private handleDataSegment;
+    private exportCurrentData;
+    private exportDataView;
+    private resetExportState;
     enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): powerbi.VisualObjectInstanceEnumerationObject;
     private applyHideEmptyColumnsSetting;
     private clearDisplay;

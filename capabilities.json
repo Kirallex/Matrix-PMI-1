@@ -27,8 +27,8 @@
                         "in": "Rows"
                     },
                 "dataReductionAlgorithm": {
-                        "top": {
-                        "count": 100
+                        "window": {
+                        "count": 10000
                         }
                 }
                 },
@@ -37,8 +37,8 @@
                         "in": "Columns"
                     },
                 "dataReductionAlgorithm": {
-                        "top": {
-                        "count": 100
+                        "window": {
+                        "count": 10000
                         }
                 }
                 },

@@ -25,4 +25,8 @@ export declare class ExcelDownloader {
     private exportToCSV;
     private showDownloadModal;
     private copyToClipboard;
+    /**
+ * Публичный метод для экспорта данных из DataView (используется после сбора всех сегментов)
+ */
+    exportDataView(dataView: powerbi.DataView): void;
 }

@@ -2,7 +2,7 @@
 import "./../style/visual.less";
 import powerbi from "powerbi-visuals-api";
 import { MatrixDataviewHtmlFormatter } from "./matrixDataViewHtmlFormatter";
-import { MatrixDataViewDictFormatter } from "./___matrixDataViewDictFormatter___";
+import { ExcelDownloader } from "./downloadExcel";
 import IVisual = powerbi.extensibility.visual.IVisual;
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
@@ -11,17 +11,16 @@ import Host = powerbi.extensibility.visual.IVisualHost;
 import { VisualSettings } from "./settings";
 import { ObjectEnumerationBuilder } from "./objectEnumerationBuilder";
 import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
-import {MatrixEmptyColumnsHider} from "./hideEmptyCols";
-import {ExcelDownloader} from "./downloadExcel";
+import { MatrixEmptyColumnsHider } from "./hideEmptyCols";
+import VisualDataChangeOperationKind = powerbi.VisualDataChangeOperationKind;
 
 export class Visual implements IVisual {
     private target: HTMLElement;
     private settings: VisualSettings;
     private host: Host;
     private currentDataView: DataView;
-    private isFetchingData: boolean = false;
-    private finalDataView: DataView | null = null;
-    private segmentCount: number = 0;
+    private exportButton: HTMLButtonElement | null = null;
+    private isExporting: boolean = false;
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
@@ -34,175 +33,151 @@ export class Visual implements IVisual {
             return;
         }
 
-        const dataView = options.dataViews[0];
-        this.currentDataView = dataView;
+        this.settings = VisualSettings.parse<VisualSettings>(<any>options.dataViews[0]);
+        this.currentDataView = options.dataViews[0];
 
-        // Если идёт сбор данных
-        if (this.isFetchingData) {
-            this.processDataSegment(dataView);
-            return; // Не рендерим визуал во время сбора
+        // Подсчёт строк для диагностики
+        const rowCount = this.countRows(this.currentDataView);
+        console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
+
+        if (this.isExporting) {
+            this.handleDataSegment(this.currentDataView);
         }
 
-        console.log("dataView", dataView);
-        
-        this.settings = VisualSettings.parse(dataView) as VisualSettings;
-        
-        if (!dataView.matrix?.rows?.root?.children?.length || 
-            !dataView.matrix?.columns?.root?.children?.length) {
-            this.clearDisplay();
-            return;
-        }
-
-        this.clearDisplay();
-
-        const buttonContainer = document.createElement('div');
-        const button = document.createElement('button');
-        button.setAttribute("id", "exportBtn");
-        button.setAttribute("type", "button");
-        button.innerText = "Export Data";
-        
-        button.addEventListener('click', () => {
-            this.startDataFetching();
-        });
-    
-        buttonContainer.appendChild(button);
-        this.target.appendChild(buttonContainer);
-
-        const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(dataView.matrix);
-        const formattedDictMatrix = MatrixDataViewDictFormatter.formatDataViewMatrix(dataView.matrix);
-        console.log(formattedDictMatrix);
-        
-        if (this.settings.hideEmptyCols.hideColsLabel) {
-            this.applyHideEmptyColumnsSetting(formattedMatrix)
-        }
-
-        this.target.appendChild(formattedMatrix);
+        this.renderVisualization();
     }
 
     /**
-     * Начинает процесс сбора данных
-     */
-    private startDataFetching(): void {
-        console.log("=== Начало сбора данных ===");
-        this.isFetchingData = true;
-        this.segmentCount = 0;
-        this.finalDataView = null;
-
-        // Проверяем, есть ли сегмент в текущих данных
-        if (this.currentDataView.metadata?.segment) {
-            // Есть дополнительные данные, запрашиваем первый сегмент
-            console.log("Есть сегмент данных, запрашиваем...");
-            this.requestMoreData();
-        } else {
-            // Нет сегментов — сразу экспортируем текущие данные
-            console.log("Нет сегментов данных, экспортируем текущие данные.");
-            this.finishDataFetching(this.currentDataView);
-        }
-    }
-
-    /**
-     * Запрашивает дополнительные данные
-     */
-    private requestMoreData(): void {
-        try {
-            const accepted = this.host.fetchMoreData(true); // режим агрегации
-            if (!accepted) {
-                console.log("fetchMoreData вернул false — больше данных нет");
-                this.finishDataFetching(this.currentDataView);
-            }
-        } catch (error) {
-            console.error("Ошибка fetchMoreData:", error);
-            this.finishDataFetching(this.currentDataView);
-        }
-    }
-
-    /**
-     * Обрабатывает полученный сегмент данных
-     */
-    private processDataSegment(dataView: DataView): void {
-        this.segmentCount++;
-        this.finalDataView = dataView;
-
-        const rowCount = this.countRows(dataView);
-        console.log(`Сегмент ${this.segmentCount}, строк: ${rowCount}`);
-
-        // Проверяем, есть ли ещё сегменты
-        if (dataView.metadata?.segment) {
-            // Ещё есть данные, запрашиваем следующий
-            console.log("Ещё есть сегмент, запрашиваем следующий...");
-            this.requestMoreData();
-        } else {
-            // Сегментов больше нет
-            console.log("Сегментов больше нет, завершаем сбор.");
-            this.finishDataFetching(dataView);
-        }
-    }
-
-    /**
-     * Завершает сбор и экспортирует данные
-     */
-    private finishDataFetching(dataView: DataView): void {
-        console.log(`=== Сбор завершён. Сегментов: ${this.segmentCount} ===`);
-        this.isFetchingData = false;
-
-        const rowCount = this.countRows(dataView);
-        console.log(`Всего строк: ${rowCount}`);
-
-        // Экспортируем
-        this.exportData(dataView);
-    }
-
-    /**
-     * Экспортирует данные через ExcelDownloader
-     */
-    private exportData(dataView: DataView): void {
-        try {
-            const downloader = new ExcelDownloader(this.host, dataView);
-            // Используем приватный метод exportFromDataView через any (он есть в downloadExcel.ts)
-            (downloader as any).exportFromDataView()
-                .then(() => {
-                    console.log("Экспорт успешно завершён");
-                })
-                .catch((err: any) => {
-                    console.error("Ошибка при экспорте из DataView:", err);
-                    // Fallback: экспорт из DOM
-                    const table = this.target.querySelector('table');
-                    if (table) {
-                        (downloader as any).exportToCSV(table as HTMLElement);
-                    }
-                });
-        } catch (error) {
-            console.error("Ошибка создания экспортёра:", error);
-        } finally {
-            // Разблокируем кнопку
-            const mainButton = this.target.querySelector('#exportBtn') as HTMLButtonElement;
-            if (mainButton) {
-                mainButton.disabled = false;
-                mainButton.textContent = "Export Data";
-            }
-        }
-    }
-
-    /**
-     * Подсчитывает количество строк в dataView
+     * Подсчёт количества строк в матрице (рекурсивно)
      */
     private countRows(dataView: DataView): number {
         if (!dataView?.matrix?.rows?.root?.children) return 0;
-        let count = 0;
-        const countChildren = (nodes: powerbi.DataViewMatrixNode[]) => {
+
+        const countChildren = (nodes: powerbi.DataViewMatrixNode[]): number => {
+            let total = 0;
             for (const node of nodes) {
-                count++;
+                total++; // сам узел
                 if (node.children) {
-                    countChildren(node.children);
+                    total += countChildren(node.children);
                 }
             }
+            return total;
         };
-        countChildren(dataView.matrix.rows.root.children);
-        return count;
+
+        return countChildren(dataView.matrix.rows.root.children);
+    }
+
+    private renderVisualization(): void {
+        // Создаём кнопку, если её нет
+        if (!this.exportButton) {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'export-button-container';
+            
+            this.exportButton = document.createElement('button');
+            this.exportButton.id = "exportBtn";
+            this.exportButton.type = "button";
+            this.exportButton.className = "export-button";
+            this.exportButton.textContent = "Export Data";
+            this.exportButton.addEventListener('click', () => this.handleExportClick());
+            
+            buttonContainer.appendChild(this.exportButton);
+            this.target.prepend(buttonContainer);
+        }
+
+        // Удаляем старую таблицу
+        const existingTable = this.target.querySelector('table');
+        if (existingTable) {
+            existingTable.remove();
+        }
+
+        if (this.currentDataView?.matrix) {
+            const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(this.currentDataView.matrix);
+            
+            if (this.settings?.hideEmptyCols?.hideColsLabel) {
+                this.applyHideEmptyColumnsSetting(formattedMatrix);
+            }
+            
+            this.target.appendChild(formattedMatrix);
+        }
+    }
+
+    private handleExportClick(): void {
+        if (this.isExporting) return;
+
+        console.log("=== Starting data export process ===");
+        this.isExporting = true;
+
+        if (this.exportButton) {
+            this.exportButton.disabled = true;
+            this.exportButton.textContent = "Loading data...";
+        }
+
+        const hasSegment = this.currentDataView.metadata?.segment;
+        console.log(`[handleExportClick] currentDataView.metadata.segment: ${hasSegment ? 'YES' : 'NO'}`);
+
+        if (hasSegment) {
+            console.log("Segment exists → requesting more data...");
+            this.requestMoreData();
+        } else {
+            console.log("No segment → exporting current data immediately");
+            this.exportCurrentData();
+        }
+    }
+
+    private requestMoreData(): void {
+        try {
+            console.log("Requesting more data via fetchMoreData(true)...");
+            const accepted = this.host.fetchMoreData(true);
+            console.log(`fetchMoreData returned: ${accepted}`);
+            if (!accepted) {
+                console.log("fetchMoreData returned false, exporting current data");
+                this.exportCurrentData();
+            }
+        } catch (error) {
+            console.error("Error in fetchMoreData:", error);
+            this.exportCurrentData();
+        }
+    }
+
+    private handleDataSegment(dataView: DataView): void {
+        console.log(`[handleDataSegment] received. segment: ${dataView.metadata?.segment ? 'YES' : 'NO'}`);
+        if (dataView.metadata?.segment) {
+            console.log("Segment present → requesting next...");
+            this.requestMoreData();
+        } else {
+            console.log("No segment → all data collected, exporting...");
+            this.exportDataView(dataView);
+        }
+    }
+
+    private exportCurrentData(): void {
+        console.log("exportCurrentData called");
+        this.exportDataView(this.currentDataView);
+    }
+
+    private exportDataView(dataView: DataView): void {
+        console.log("Exporting data...");
+        try {
+            const downloader = new ExcelDownloader(this.host, dataView);
+            downloader.exportDataView(dataView);
+        } catch (error) {
+            console.error("Export failed:", error);
+        } finally {
+            this.resetExportState();
+        }
+    }
+
+    private resetExportState(): void {
+        this.isExporting = false;
+        if (this.exportButton) {
+            this.exportButton.disabled = false;
+            this.exportButton.textContent = "Export Data";
+        }
     }
 
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): powerbi.VisualObjectInstanceEnumerationObject {
         const enumeration = new ObjectEnumerationBuilder();
+
         switch (options.objectName) {
             case "subTotals":
                 enumeration.pushInstance({
@@ -215,6 +190,7 @@ export class Visual implements IVisual {
                     }
                 });
                 break;
+
             case "hideEmptyCols":
                 enumeration.pushInstance({
                     objectName: "hideEmptyCols",
@@ -226,6 +202,7 @@ export class Visual implements IVisual {
                 });
                 break;
         }
+
         return enumeration.complete();
     }
 
@@ -234,8 +211,11 @@ export class Visual implements IVisual {
         hider.hideEmptyColsMethod(formattedMatrix);
     }
 
-    private clearDisplay() {
-        while(this.target.firstChild) {
+    private clearDisplay(): void {
+        while (this.target.firstChild) {
+            if (this.target.firstChild === this.exportButton?.parentElement) {
+                break;
+            }
             this.target.removeChild(this.target.firstChild);
         }
     }
