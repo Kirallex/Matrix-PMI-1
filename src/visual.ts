@@ -118,9 +118,13 @@ export class Visual implements IVisual {
         if (hasSegment) {
             console.log("Segment exists → requesting more data...");
             this.requestMoreData();
+
         } else {
             console.log("No segment → exporting current data immediately");
             this.exportCurrentData();
+            3
+            const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size; //ДОБАВИЛ ДЛЯ ДИАГНОСТИКИ! УДАЛИТЬ ПОЗЖЕ
+            console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
         }
     }
 
@@ -144,9 +148,13 @@ export class Visual implements IVisual {
         if (dataView.metadata?.segment) {
             console.log("Segment present → requesting next...");
             this.requestMoreData();
+            const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size; //ДОБАВИЛ ДЛЯ ДИАГНОСТИКИ! УДАЛИТЬ ПОЗЖЕ
+            console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
         } else {
             console.log("No segment → all data collected, exporting...");
             this.exportDataView(dataView);
+            const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size; //ДОБАВИЛ ДЛЯ ДИАГНОСТИКИ! УДАЛИТЬ ПОЗЖЕ
+            console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
         }
     }
 

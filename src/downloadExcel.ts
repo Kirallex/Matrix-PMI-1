@@ -66,7 +66,7 @@ export class ExcelDownloader {
         }
 
         try {
-            const matrixData = MatrixDataViewDictFormatter.formatDataViewMatrix(dataView.matrix);
+            const matrixData = MatrixDataViewDictFormatter.formatDataViewMatrix(dataView.matrix); //Исправить обратно на HTML formatter
             const csv = this.convertMatrixDataToCsv(matrixData);
             this.downloadCsvFile(csv);
             
