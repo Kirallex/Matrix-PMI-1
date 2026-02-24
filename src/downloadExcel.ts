@@ -1,135 +1,26 @@
 "use strict";
-import powerbi from "powerbi-visuals-api";
 import "./../style/excelDownloadModal.css"
-import { DataLoader } from "./dataLoader";
-import { MatrixDataViewDictFormatter } from "./___matrixDataViewDictFormatter___"; 
-import { IMatrixData } from "./matrixDataInterfaces";
 
 export class ExcelDownloader {
-    private host: powerbi.extensibility.visual.IVisualHost;
-    private currentDataView: powerbi.DataView;
+    /**
+     * Конструктор больше не требует host и dataView, так как экспорт идёт из готовой HTML-таблицы.
+     * Оставлен для обратной совместимости.
+     */
+    constructor() {}
 
-    constructor(host: powerbi.extensibility.visual.IVisualHost, dataView: powerbi.DataView) {
-        this.host = host;
-        this.currentDataView = dataView;
-    }
-
-    public excelDownloaderMethod(table: HTMLElement, grid: HTMLElement): void {
-        const exportBtn = grid.querySelector('#exportBtn') as HTMLButtonElement;
-        
-        if (!exportBtn) {
-            console.error('Export button not found');
-            return;
-        }
-
-        const exportToExcel = async () => {
-            try {
-                // Используем DataLoader для получения данных
-                await this.exportFromDataView();
-            } catch (error) {
-                console.error('Error exporting to CSV:', error);
-                // Fallback: если есть DOM таблица, можно попробовать из нее
-                if (table) {
-                    this.exportToCSV(table as HTMLElement);
-                }
-            }
-        };
-
-        exportBtn.addEventListener('click', exportToExcel);
-    }
-
-    private async exportFromDataView(): Promise<void> {
-        console.log("Starting export from DataView...");
-        
-        // Получаем информацию о текущих данных
-        const initialRowCount = DataLoader.countRows(this.currentDataView);
-        console.log(`Initial data rows: ${initialRowCount}`);
-        
-        // Загружаем данные (теперь просто используем текущие данные)
-        console.log("Loading available data...");
-        const allDataView = await DataLoader.loadAllData(this.host, this.currentDataView);
-        
-        const finalRowCount = DataLoader.countRows(allDataView);
-        console.log(`Final data rows: ${finalRowCount}`);
-        
-        // Преобразуем DataView в CSV
-        this.convertDataViewToCsv(allDataView);
+    /**
+     * Публичный метод для экспорта HTML-таблицы в CSV.
+     * Вызывается из visual.ts после применения всех настроек (hideEmptyCols, subTotals).
+     * @param table - DOM-элемент таблицы (HTMLElement)
+     */
+    public exportTable(table: HTMLElement): void {
+        this.exportToCSV(table);
     }
 
     /**
-     * Преобразует DataView в CSV и запускает скачивание
+     * Экспорт таблицы в CSV (прежняя реализация)
+     * @param table - HTML-таблица
      */
-    private convertDataViewToCsv(dataView: powerbi.DataView): void {
-        if (!dataView?.matrix) {
-            console.error('No matrix data available for export');
-            return;
-        }
-
-        try {
-            const matrixData = MatrixDataViewDictFormatter.formatDataViewMatrix(dataView.matrix); //Исправить обратно на HTML formatter
-            const csv = this.convertMatrixDataToCsv(matrixData);
-            this.downloadCsvFile(csv);
-            
-        } catch (error) {
-            console.error('Error converting DataView to CSV:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Преобразует структурированные данные матрицы в CSV строку
-     */
-    private convertMatrixDataToCsv(matrixData: IMatrixData): string {
-        let csv = '';
-        
-        // Добавляем заголовки (topRow)
-        for (const row of matrixData.topRow) {
-            csv += this.escapeCsvRow(row) + '\n';
-        }
-        
-        // Добавляем основные строки данных (midRow)
-        for (const row of matrixData.midRow) {
-            csv += this.escapeCsvRow(row) + '\n';
-        }
-        
-        // Добавляем строки с тоталами (totalRow)
-        for (const row of matrixData.totalRow) {
-            csv += this.escapeCsvRow(row) + '\n';
-        }
-        
-        return csv;
-    }
-
-    /**
-     * Экранирует строку для CSV формата
-     */
-    private escapeCsvRow(row: string[]): string {
-        return row.map(cell => {
-            let text = cell || '';
-            text = text.replace(/"/g, '""');
-            if (text.includes(',') || text.includes('"') || text.includes('\n') || text.includes('\r')) {
-                text = `"${text}"`;
-            }
-            return text;
-        }).join(',');
-    }
-
-    /**
-     * Создает и скачивает CSV файл, а также показывает модальное окно
-     */
-    private downloadCsvFile(csvContent: string): void {
-        const bom = '\uFEFF';
-        const csvData = bom + csvContent;
-        
-        const blob = new Blob([csvData], { 
-            type: 'text/csv;charset=utf-8' 
-        });
-        
-        const blobUrl = URL.createObjectURL(blob);
-        
-        this.showDownloadModal(blobUrl);
-    }
-
     private exportToCSV(table: HTMLElement): void {
         const rows = table.querySelectorAll('tr');
         let csv = '';
@@ -162,6 +53,9 @@ export class ExcelDownloader {
         this.showDownloadModal(blobUrl);
     }
 
+    /**
+     * Показывает модальное окно для скачивания (без изменений)
+     */
     private showDownloadModal(blobUrl: string): void {
         const modal = document.createElement('div');
         modal.className = 'excel-download-modal';
@@ -230,6 +124,9 @@ export class ExcelDownloader {
         }, 100);
     }
 
+    /**
+     * Копирование ссылки в буфер обмена (без изменений)
+     */
     private copyToClipboard(text: string, button: HTMLButtonElement): void {
         const originalText = button.textContent;
         
@@ -260,15 +157,5 @@ export class ExcelDownloader {
             button.textContent = originalText;
             button.classList.remove('copied', 'error');
         }, 2000);
-    }
-        /**
-     * Публичный метод для экспорта данных из DataView (используется после сбора всех сегментов)
-     */
-    public exportDataView(dataView: powerbi.DataView): void {
-        if (!dataView?.matrix) {
-            console.error('No matrix data available for export');
-            return;
-        }
-        this.convertDataViewToCsv(dataView);
     }
 }

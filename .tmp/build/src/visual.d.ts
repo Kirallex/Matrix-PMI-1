@@ -11,6 +11,7 @@ export declare class Visual implements IVisual {
     private currentDataView;
     private exportButton;
     private isExporting;
+    private pendingExport;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
     /**
@@ -21,7 +22,6 @@ export declare class Visual implements IVisual {
     private handleExportClick;
     private requestMoreData;
     private handleDataSegment;
-    private exportCurrentData;
     private exportDataView;
     private resetExportState;
     enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): powerbi.VisualObjectInstanceEnumerationObject;

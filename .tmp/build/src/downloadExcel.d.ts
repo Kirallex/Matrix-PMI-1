@@ -1,32 +1,27 @@
-import powerbi from "powerbi-visuals-api";
 import "./../style/excelDownloadModal.css";
 export declare class ExcelDownloader {
-    private host;
-    private currentDataView;
-    constructor(host: powerbi.extensibility.visual.IVisualHost, dataView: powerbi.DataView);
-    excelDownloaderMethod(table: HTMLElement, grid: HTMLElement): void;
-    private exportFromDataView;
     /**
-     * Преобразует DataView в CSV и запускает скачивание
+     * Конструктор больше не требует host и dataView, так как экспорт идёт из готовой HTML-таблицы.
+     * Оставлен для обратной совместимости.
      */
-    private convertDataViewToCsv;
+    constructor();
     /**
-     * Преобразует структурированные данные матрицы в CSV строку
+     * Публичный метод для экспорта HTML-таблицы в CSV.
+     * Вызывается из visual.ts после применения всех настроек (hideEmptyCols, subTotals).
+     * @param table - DOM-элемент таблицы (HTMLElement)
      */
-    private convertMatrixDataToCsv;
+    exportTable(table: HTMLElement): void;
     /**
-     * Экранирует строку для CSV формата
+     * Экспорт таблицы в CSV (прежняя реализация)
+     * @param table - HTML-таблица
      */
-    private escapeCsvRow;
-    /**
-     * Создает и скачивает CSV файл, а также показывает модальное окно
-     */
-    private downloadCsvFile;
     private exportToCSV;
-    private showDownloadModal;
-    private copyToClipboard;
     /**
- * Публичный метод для экспорта данных из DataView (используется после сбора всех сегментов)
- */
-    exportDataView(dataView: powerbi.DataView): void;
+     * Показывает модальное окно для скачивания (без изменений)
+     */
+    private showDownloadModal;
+    /**
+     * Копирование ссылки в буфер обмена (без изменений)
+     */
+    private copyToClipboard;
 }

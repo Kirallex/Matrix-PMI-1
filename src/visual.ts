@@ -21,6 +21,7 @@ export class Visual implements IVisual {
     private currentDataView: DataView;
     private exportButton: HTMLButtonElement | null = null;
     private isExporting: boolean = false;
+    private pendingExport: boolean = false; // Флаг для отложенного экспорта
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
@@ -44,7 +45,14 @@ export class Visual implements IVisual {
             this.handleDataSegment(this.currentDataView);
         }
 
+        // Рендерим визуализацию (таблицу)
         this.renderVisualization();
+
+        // Если есть отложенный экспорт, выполняем его после обновления таблицы
+        if (this.pendingExport) {
+            this.exportDataView();
+            this.pendingExport = false;
+        }
     }
 
     /**
@@ -93,6 +101,7 @@ export class Visual implements IVisual {
         if (this.currentDataView?.matrix) {
             const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(this.currentDataView.matrix);
             
+            // Применяем настройку скрытия пустых колонок
             if (this.settings?.hideEmptyCols?.hideColsLabel) {
                 this.applyHideEmptyColumnsSetting(formattedMatrix);
             }
@@ -118,13 +127,10 @@ export class Visual implements IVisual {
         if (hasSegment) {
             console.log("Segment exists → requesting more data...");
             this.requestMoreData();
-
         } else {
             console.log("No segment → exporting current data immediately");
-            this.exportCurrentData();
-            3
-            const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size; //ДОБАВИЛ ДЛЯ ДИАГНОСТИКИ! УДАЛИТЬ ПОЗЖЕ
-            console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
+            this.exportDataView();
+            this.resetExportState();
         }
     }
 
@@ -133,41 +139,41 @@ export class Visual implements IVisual {
             console.log("Requesting more data via fetchMoreData(true)...");
             const accepted = this.host.fetchMoreData(true);
             console.log(`fetchMoreData returned: ${accepted}`);
-            if (!accepted) {
-                console.log("fetchMoreData returned false, exporting current data");
-                this.exportCurrentData();
-            }
+            // Если fetchMoreData вернул false, ничего не делаем – данные либо закончились, либо лимит.
+            // В следующем update обработаем сегмент.
         } catch (error) {
             console.error("Error in fetchMoreData:", error);
-            this.exportCurrentData();
+            // При ошибке пытаемся экспортировать текущие данные
+            this.exportDataView();
+            this.resetExportState();
         }
     }
 
     private handleDataSegment(dataView: DataView): void {
         console.log(`[handleDataSegment] received. segment: ${dataView.metadata?.segment ? 'YES' : 'NO'}`);
+        const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size;
         if (dataView.metadata?.segment) {
             console.log("Segment present → requesting next...");
             this.requestMoreData();
-            const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size; //ДОБАВИЛ ДЛЯ ДИАГНОСТИКИ! УДАЛИТЬ ПОЗЖЕ
             console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
         } else {
-            console.log("No segment → all data collected, exporting...");
-            this.exportDataView(dataView);
-            const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size; //ДОБАВИЛ ДЛЯ ДИАГНОСТИКИ! УДАЛИТЬ ПОЗЖЕ
+            console.log("No segment → all data collected, scheduling export after render");
+            this.pendingExport = true; // откладываем экспорт до следующей отрисовки
             console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
         }
     }
 
-    private exportCurrentData(): void {
-        console.log("exportCurrentData called");
-        this.exportDataView(this.currentDataView);
-    }
-
-    private exportDataView(dataView: DataView): void {
-        console.log("Exporting data...");
+    private exportDataView(): void {
+        console.log("Exporting data from HTML table...");
+        const table = this.target.querySelector('table');
+        if (!table) {
+            console.error("No table found for export");
+            this.resetExportState();
+            return;
+        }
         try {
-            const downloader = new ExcelDownloader(this.host, dataView);
-            downloader.exportDataView(dataView);
+            const downloader = new ExcelDownloader();
+            downloader.exportTable(table as HTMLElement);
         } catch (error) {
             console.error("Export failed:", error);
         } finally {
@@ -177,6 +183,7 @@ export class Visual implements IVisual {
 
     private resetExportState(): void {
         this.isExporting = false;
+        this.pendingExport = false;
         if (this.exportButton) {
             this.exportButton.disabled = false;
             this.exportButton.textContent = "Export Data";
