@@ -10,15 +10,12 @@ export declare class ExcelDownloader {
      * Вызывается из visual.ts после применения всех настроек (hideEmptyCols, subTotals).
      * @param table - DOM-элемент таблицы (HTMLElement)
      */
-    exportTable(table: HTMLElement): void;
+    exportTable(table: HTMLElement, cntRows: number): void;
     /**
      * Экспорт таблицы в CSV (прежняя реализация)
      * @param table - HTML-таблица
      */
     private exportToCSV;
-    /**
-     * Показывает модальное окно для скачивания (без изменений)
-     */
     private showDownloadModal;
     /**
      * Копирование ссылки в буфер обмена (без изменений)

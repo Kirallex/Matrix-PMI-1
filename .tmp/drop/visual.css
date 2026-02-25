@@ -255,6 +255,11 @@
   color: #666;
   font-size: 14px;
 }
+.excel-download-modal-count-rows {
+  margin: 0 0 15px 0;
+  color: #666;
+  font-size: 14px;
+}
 .excel-download-modal-link-container {
   display: flex;
   gap: 10px;

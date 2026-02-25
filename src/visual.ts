@@ -42,15 +42,15 @@ export class Visual implements IVisual {
         console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
 
         if (this.isExporting) {
-            this.handleDataSegment(this.currentDataView);
+            this.handleDataSegment(this.currentDataView, rowCount);
         }
 
         // Рендерим визуализацию (таблицу)
-        this.renderVisualization();
+        this.renderVisualization(rowCount);
 
         // Если есть отложенный экспорт, выполняем его после обновления таблицы
         if (this.pendingExport) {
-            this.exportDataView();
+            this.exportDataView(rowCount);
             this.pendingExport = false;
         }
     }
@@ -75,7 +75,7 @@ export class Visual implements IVisual {
         return countChildren(dataView.matrix.rows.root.children);
     }
 
-    private renderVisualization(): void {
+    private renderVisualization(cntRows: number): void {
         // Создаём кнопку, если её нет
         if (!this.exportButton) {
             const buttonContainer = document.createElement('div');
@@ -86,7 +86,7 @@ export class Visual implements IVisual {
             this.exportButton.type = "button";
             this.exportButton.className = "export-button";
             this.exportButton.textContent = "Export Data";
-            this.exportButton.addEventListener('click', () => this.handleExportClick());
+            this.exportButton.addEventListener('click', () => this.handleExportClick(cntRows));
             
             buttonContainer.appendChild(this.exportButton);
             this.target.prepend(buttonContainer);
@@ -110,7 +110,7 @@ export class Visual implements IVisual {
         }
     }
 
-    private handleExportClick(): void {
+    private handleExportClick(cntRows: number): void {
         if (this.isExporting) return;
 
         console.log("=== Starting data export process ===");
@@ -126,15 +126,15 @@ export class Visual implements IVisual {
 
         if (hasSegment) {
             console.log("Segment exists → requesting more data...");
-            this.requestMoreData();
+            this.requestMoreData(cntRows);
         } else {
             console.log("No segment → exporting current data immediately");
-            this.exportDataView();
+            this.exportDataView(cntRows);
             this.resetExportState();
         }
     }
 
-    private requestMoreData(): void {
+    private requestMoreData(cntRows: number): void {
         try {
             console.log("Requesting more data via fetchMoreData(true)...");
             const accepted = this.host.fetchMoreData(true);
@@ -144,17 +144,17 @@ export class Visual implements IVisual {
         } catch (error) {
             console.error("Error in fetchMoreData:", error);
             // При ошибке пытаемся экспортировать текущие данные
-            this.exportDataView();
+            this.exportDataView(cntRows);
             this.resetExportState();
         }
     }
 
-    private handleDataSegment(dataView: DataView): void {
+    private handleDataSegment(dataView: DataView, cntRows: number): void {
         console.log(`[handleDataSegment] received. segment: ${dataView.metadata?.segment ? 'YES' : 'NO'}`);
         const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size;
         if (dataView.metadata?.segment) {
             console.log("Segment present → requesting next...");
-            this.requestMoreData();
+            this.requestMoreData(cntRows);
             console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
         } else {
             console.log("No segment → all data collected, scheduling export after render");
@@ -163,7 +163,7 @@ export class Visual implements IVisual {
         }
     }
 
-    private exportDataView(): void {
+    private exportDataView(cntRows: number): void {
         console.log("Exporting data from HTML table...");
         const table = this.target.querySelector('table');
         if (!table) {
@@ -173,7 +173,7 @@ export class Visual implements IVisual {
         }
         try {
             const downloader = new ExcelDownloader();
-            downloader.exportTable(table as HTMLElement);
+            downloader.exportTable(table as HTMLElement, cntRows as number);
         } catch (error) {
             console.error("Export failed:", error);
         } finally {

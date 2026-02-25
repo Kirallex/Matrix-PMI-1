@@ -13,15 +13,15 @@ export class ExcelDownloader {
      * Вызывается из visual.ts после применения всех настроек (hideEmptyCols, subTotals).
      * @param table - DOM-элемент таблицы (HTMLElement)
      */
-    public exportTable(table: HTMLElement): void {
-        this.exportToCSV(table);
+    public exportTable(table: HTMLElement, cntRows: number): void {
+        this.exportToCSV(table, cntRows);
     }
 
     /**
      * Экспорт таблицы в CSV (прежняя реализация)
      * @param table - HTML-таблица
      */
-    private exportToCSV(table: HTMLElement): void {
+    private exportToCSV(table: HTMLElement, cntRows: Number): void {
         const rows = table.querySelectorAll('tr');
         let csv = '';
         
@@ -50,13 +50,10 @@ export class ExcelDownloader {
         
         const blobUrl = URL.createObjectURL(blob);
         
-        this.showDownloadModal(blobUrl);
+        this.showDownloadModal(blobUrl, cntRows);
     }
 
-    /**
-     * Показывает модальное окно для скачивания (без изменений)
-     */
-    private showDownloadModal(blobUrl: string): void {
+    private showDownloadModal(blobUrl: string, cntRows: Number): void {
         const modal = document.createElement('div');
         modal.className = 'excel-download-modal';
 
@@ -72,6 +69,11 @@ export class ExcelDownloader {
         instruction.textContent = 'Скопируйте ссылку ниже, вставьте в отдельную вкладку браузера и нажмите Enter';
         instruction.className = 'excel-download-modal-instruction';
         modalContent.appendChild(instruction);
+
+        const numberOfRowsToDownload = document.createElement('p');
+        numberOfRowsToDownload.textContent = `Количество строк для скачивания: ${cntRows}`;
+        numberOfRowsToDownload.className='excel-download-modal-count-rows';
+        modalContent.appendChild(numberOfRowsToDownload);
 
         const linkContainer = document.createElement('div');
         linkContainer.className = 'excel-download-modal-link-container';
