@@ -1,21 +1,25 @@
 import powerbi from "powerbi-visuals-api";
 import { valueFormatter } from "powerbi-visuals-utils-formattingutils";
-// import IValueFormatter = powerbi.extensibility.utils.formatting.IValueFormatter;
-// import valueFormatter = powerbi.extensibility.utils.formatting.valueFormatter;
-
 
 export class MatrixDataviewHtmlFormatter {
-    public static formatDataViewMatrix(matrix: powerbi.DataViewMatrix): HTMLElement {
+    public static formatDataViewMatrix(
+        matrix: powerbi.DataViewMatrix,
+        valueSources?: powerbi.DataViewMetadataColumn[]
+    ): HTMLElement {
         const htmlElement = document.createElement('div');
         htmlElement.classList.add('datagrid');
         const tableElement = document.createElement('table');
         const tbodyElement = document.createElement('tbody');
-        //const tableForDownload: IMatrixData;
-        // Формируем заголовки колонок на основе структуры matrix.columns
-        MatrixDataviewHtmlFormatter.formatColumnHeaders(matrix.columns, matrix.rows, tbodyElement);
         
-        // Формируем строки данных
-        MatrixDataviewHtmlFormatter.formatRowNodes(matrix.rows.root, tbodyElement, matrix.columns, matrix.valueSources);
+        // Создаём массив соответствия индексов колонок индексам источников
+        let columnSourceIndices: number[] = [];
+        if (matrix.columns?.root) {
+            const leafNodes = this.collectLeafNodesInOrder(matrix.columns.root);
+            columnSourceIndices = leafNodes.map(node => node.levelSourceIndex !== undefined ? node.levelSourceIndex : -1);
+        }
+        
+        this.formatColumnHeaders(matrix.columns, matrix.rows, tbodyElement);
+        this.formatRowNodes(matrix.rows.root, tbodyElement, matrix.columns, valueSources, columnSourceIndices);
         
         tableElement.appendChild(tbodyElement);
         htmlElement.appendChild(tableElement);
@@ -25,31 +29,23 @@ export class MatrixDataviewHtmlFormatter {
     private static formatColumnHeaders(columns: powerbi.DataViewHierarchy, rows: powerbi.DataViewHierarchy, tbodyElement: HTMLTableSectionElement): void {
         if (!columns?.root?.children) return;
 
-        // Определяем количество уровней в columns (исключая уровень мер)
         const columnLevels = columns.levels.filter(level => 
             !level.sources.some(source => source.isMeasure)
         );
 
-        // Создаем строки для каждого уровня колонок
         for (let levelIndex = 0; levelIndex < columnLevels.length; levelIndex++) {
             const row = document.createElement('tr');
             let rowLevel = columnLevels.length - levelIndex;
             row.classList.add('topRow');
             row.setAttribute('data-level',  rowLevel.toString());
             let childrenNum: number;
-            MatrixDataviewHtmlFormatter.addRowHeader(row, columnLevels[levelIndex]?.sources[0]?.displayName || '');
-            MatrixDataviewHtmlFormatter.formatColumnLevel(columns.root, levelIndex, row);
-            if(row.children.length > 0) {
-                childrenNum = row.children.length - 1;
-            }
-            else {
-                childrenNum = 0;
-            }
+            this.addRowHeader(row, columnLevels[levelIndex]?.sources[0]?.displayName || '');
+            this.formatColumnLevel(columns.root, levelIndex, row);
+            childrenNum = row.children.length > 0 ? row.children.length - 1 : 0;
             row.setAttribute('data-children-num', childrenNum.toString());
             tbodyElement.appendChild(row);
         }
 
-        // Создаем строку для мер (значений)
         this.createMeasuresRow(columns, rows, tbodyElement, 0);
     }
 
@@ -64,26 +60,20 @@ export class MatrixDataviewHtmlFormatter {
 
         for (const child of rootNode.children) {
             if (currentLevel === targetLevel) {
-                // На нужном уровне - создаем ячейку
                 const leafCount = this.calculateLeafCount(child);
                 const displayText = child.isSubtotal ? 'Total' : (child.value?.toString() || '');
                 const isSubtotal = child.isSubtotal;
-                const th = MatrixDataviewHtmlFormatter.createColumnNode(displayText, leafCount, isSubtotal);
+                const th = this.createColumnNode(displayText, leafCount, isSubtotal);
                 row.appendChild(th);
             } else if (child.children) {
-                // Рекурсивно обходим детей
-                MatrixDataviewHtmlFormatter.formatColumnLevel(child, targetLevel, row, currentLevel + 1);
+                this.formatColumnLevel(child, targetLevel, row, currentLevel + 1);
             }
-            
         }
-        //row.setAttribute('data-childrenNum', headerCounter.toString());
     }
 
     private static calculateLeafCount(node): number {
         if (node.leafCount !== undefined) return node.leafCount;
-        
         if (!node.children || node.children.length === 0) return 1;
-        
         let count = 0;
         for (const child of node.children) {
             count += this.calculateLeafCount(child);
@@ -96,17 +86,12 @@ export class MatrixDataviewHtmlFormatter {
         measuresRow.classList.add('topRow');
         measuresRow.setAttribute('data-level', measLevel.toString());
         
-        // Добавляем заголовок из rows
         const rowHeaderName = rows?.levels[0]?.sources[0]?.displayName || '';
         this.addRowHeader(measuresRow, rowHeaderName);
         
-        // Получаем все меры из columns
         const measures = this.getAllMeasures(columns);
-        
-        // Собираем все конечные узлы (листья) в правильном порядке
         const leafNodes = this.collectLeafNodesInOrder(columns.root);
         
-        // Для каждого листового узла добавляем соответствующую меру
         let counterOfHeaders: number = 0;
         for (const leafNode of leafNodes) {
             const measureIndex = leafNode.levelSourceIndex || 0;
@@ -129,17 +114,14 @@ export class MatrixDataviewHtmlFormatter {
 
     private static traverseForLeafNodes(node: powerbi.DataViewMatrixNode, leafNodes: powerbi.DataViewMatrixNode[]): void {
         if (!node.children || node.children.length === 0) {
-            // Это листовой узел (мера)
             leafNodes.push(node);
         } else {
-            // Рекурсивно обходим детей (включая итоговые узлы)
             for (const child of node.children) {
                 this.traverseForLeafNodes(child, leafNodes);
             }
         }
     }
 
-    // Новый метод: проверяет, является ли листовой узел частью тотала
     private static isLeafNodeSubtotal(node: powerbi.DataViewMatrixNode): boolean {
         return node.isSubtotal || 
                (node.levelValues && node.levelValues.some(lv => lv.value === 'Total')) ||
@@ -148,12 +130,9 @@ export class MatrixDataviewHtmlFormatter {
 
     private static getAllMeasures(columns: powerbi.DataViewHierarchy): string[] {
         const measures: string[] = [];
-        
-        // Ищем уровень с мерами
         const measuresLevel = columns.levels.find(level => 
             level.sources.some(source => source.isMeasure)
         );
-        
         if (measuresLevel) {
             for (const source of measuresLevel.sources) {
                 if (source.isMeasure) {
@@ -161,7 +140,6 @@ export class MatrixDataviewHtmlFormatter {
                 }
             }
         }
-        
         return measures;
     }
 
@@ -174,37 +152,35 @@ export class MatrixDataviewHtmlFormatter {
 
     private static createColumnNode(text: string, colspan: number, isSubtotal: boolean = false): HTMLTableCellElement {
         const th = document.createElement('th');
-        
-        // Добавляем класс для тоталов
         if (isSubtotal || text === 'Total') {
             th.classList.add('totalColumn');
-        }
-        else {
+        } else {
             th.classList.add('formatColumnNodes');
         }
-        
         th.textContent = text;
-        
         if (colspan > 0) {
             th.setAttribute('colspan', colspan.toString());
         }
-        
         return th;
     }
 
-    private static formatRowNodes(root, topElement: HTMLElement, columns: powerbi.DataViewHierarchy, valueSources: powerbi.DataViewMetadataColumn[]) {
+    private static formatRowNodes(
+        root: any,
+        topElement: HTMLElement,
+        columns: powerbi.DataViewHierarchy,
+        valueSources?: powerbi.DataViewMetadataColumn[],
+        columnSourceIndices?: number[]
+    ) {
         if (!(typeof root.level === 'undefined' || root.level === null)) {
             const trElement = document.createElement('tr');
             const thElement = document.createElement('th');
             thElement.setAttribute('class', 'formatRowNodes');
             thElement.style.textAlign = 'left';
             let headerText = "";
-            //добавляем отступы в зависимости от уровня
             for (let level = 0; level < root.level; level++) {
                 headerText += '\u00A0\u00A0\u00A0\u00A0';
             }
             
-            // Получаем правильное значение для отображения
             let displayValue = "";
             if (root.isSubtotal) {
                 displayValue = "Totals";
@@ -214,128 +190,111 @@ export class MatrixDataviewHtmlFormatter {
                 trElement.appendChild(thElement);
                 trElement.classList.add('totalRow');
             } else if (root.levelSourceIndex !== undefined) {
-                // Для метрик используем levelSourceIndex для получения названия
                 displayValue = root.levelSourceIndex.value !== undefined ? 
                             root.levelSourceIndex.value : 
                             (root.levelValues && root.levelValues[0] ? 
                             root.levelValues[0].value : "");
-                
                 headerText += displayValue;
                 const textElement = document.createTextNode(headerText);
                 thElement.appendChild(textElement);
                 trElement.appendChild(thElement);
                 trElement.classList.add('midRow');
             } else {
-                // Для группировок используем value
                 displayValue = root.value !== undefined ? root.value : "";
-                
                 headerText += displayValue;
                 const textElement = document.createTextNode(headerText);
                 thElement.appendChild(textElement);
                 trElement.appendChild(thElement);
                 trElement.classList.add('midRow');
                 
-                // Ключевое изменение: если у узла есть дети, и это не тотал,
-                // добавляем ячейки с данными для родительской строки
                 if (root.children && root.children.length > 0) {
-                    // Ищем первый дочерний узел с тоталами (обычно последний)
                     const subtotalChild = root.children.find(child => child.isSubtotal);
                     if (subtotalChild && subtotalChild.values) {
-                        this.addDataCells(trElement, subtotalChild.values, columns, valueSources);
+                        this.addDataCells(trElement, subtotalChild.values, columns, valueSources, columnSourceIndices);
                     }
                 }
             }
             
-            // Добавляем ячейки данных для обычных строк и тоталов
             if (root.values && !(root.children && root.children.length > 0 && !root.isSubtotal)) {
-                this.addDataCells(trElement, root.values, columns, valueSources);
+                this.addDataCells(trElement, root.values, columns, valueSources, columnSourceIndices);
             }
             
             topElement.appendChild(trElement);
         }
         if (root.children) {
             for (const child of root.children) {
-                // Пропускаем отрисовку отдельных строк для тоталов, если они уже добавлены в родителя
                 if (!child.isSubtotal || (root.children && root.children.length > 0 && !root.isSubtotal)) {
-                    MatrixDataviewHtmlFormatter.formatRowNodes(child, topElement, columns, valueSources);
+                    this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices);
                 }
             }
         }
     }
 
-/**
- * Вспомогательный метод для добавления ячеек данных
- */
-    private static addDataCells(trElement: HTMLTableRowElement, values: any, columns: powerbi.DataViewHierarchy, valueSources: powerbi.DataViewMetadataColumn[]): void {
-    // Создаем массив ключей значений и сортируем их для правильного порядка
-    const valueKeys = Object.keys(values).sort((a, b) => parseInt(a) - parseInt(b));
-    
-    // Получаем информацию о том, какие колонки являются тоталами
-    const columnTotalInfo = this.getColumnTotalInfo(columns);
-    
-    // Получаем valueSources для форматирования
-    const currentValueSources = valueSources || [];
-    
-    for (let i = 0; i < valueKeys.length; i++) {
-        const key = valueKeys[i];
-        const value = values[key];
-        const tdElement = document.createElement('td');
-        tdElement.setAttribute('id', key);
+    private static addDataCells(
+        trElement: HTMLTableRowElement,
+        values: any,
+        columns: powerbi.DataViewHierarchy,
+        valueSources?: powerbi.DataViewMetadataColumn[],
+        columnSourceIndices?: number[]
+    ): void {
+        const valueKeys = Object.keys(values).sort((a, b) => parseInt(a) - parseInt(b));
+        const columnTotalInfo = this.getColumnTotalInfo(columns);
         
-        // Помечаем ячейки данных, которые относятся к тоталам
-        if (columnTotalInfo[parseInt(key)]) {
-            tdElement.classList.add('totalColumn');
+        for (let i = 0; i < valueKeys.length; i++) {
+            const key = valueKeys[i];
+            const value = values[key];
+            const tdElement = document.createElement('td');
+            tdElement.setAttribute('id', key);
+            const colIndex = parseInt(key);
+            
+            if (columnTotalInfo[colIndex]) {
+                tdElement.classList.add('totalColumn');
+            }
+            
+            if (value != null && value.value != null) {
+                // Определяем индекс источника значения
+                let sourceIndex = value.valueSourceIndex;
+                if (sourceIndex === undefined) {
+                    // Если не указан, используем ключ как индекс (предполагаем, что ключ = индекс меры)
+                    sourceIndex = colIndex;
+                }
+                // Добавим отладку
+                console.log(`colIndex=${colIndex}, sourceIndex=${sourceIndex}, value=${value.value}`);
+                const formattedValue = this.formatValue(value.value, sourceIndex, valueSources);
+                tdElement.appendChild(document.createTextNode(formattedValue));
+            } 
+            trElement.appendChild(tdElement);
         }
-        
-        if (value != null && value.value != null) {
-            // ИСПРАВЛЕНИЕ: Форматируем значение на основе valueSources
-            const formattedValue = this.formatValue(value.value, value.valueSourceIndex, valueSources);
-            tdElement.appendChild(document.createTextNode(formattedValue));
-        } 
-        trElement.appendChild(tdElement);
     }
-}
 
-    // Новый метод: получает информацию о том, какие колонки являются тоталами
     private static getColumnTotalInfo(columns: powerbi.DataViewHierarchy): boolean[] {
         const totalInfo: boolean[] = [];
-        
         if (!columns?.root?.children) return totalInfo;
-        
-        // Собираем все листовые узлы колонок в правильном порядке
         const leafNodes = this.collectLeafNodesInOrder(columns.root);
-        
-        // Для каждого листового узла определяем, является ли он тоталом
         for (const leafNode of leafNodes) {
             totalInfo.push(this.isLeafNodeSubtotal(leafNode));
         }
-        
         return totalInfo;
     }
 
-    private static formatValue(rawValue: number, valueSourceIndex: number, valueSources: any[]): string {
-        /*
-        Метод форматирует значения, чтобы они соответствовали формату, 
-        выбранному при создании визуализации в Power BI
-        */ 
-        if (valueSourceIndex === undefined || !valueSources || !valueSources[valueSourceIndex]) {
-            return rawValue.toString();
+    private static formatValue(rawValue: number, valueSourceIndex: number, valueSources?: any[]): string {
+        if (valueSourceIndex === undefined || valueSourceIndex < 0 || !valueSources || !valueSources[valueSourceIndex]) {
+            console.warn(`No valueSource for index ${valueSourceIndex}, using toLocaleString`);
+            return rawValue?.toLocaleString('ru-RU') || '';
         }
-        
         const valueSource = valueSources[valueSourceIndex];
-        
+        console.log(`formatValue: index=${valueSourceIndex}, format=${valueSource.format}, raw=${rawValue}`);
         try {
-            // Используется встроенный форматтер Power BI
-            const formatter = valueFormatter.create({
+            const options: any = {
                 format: valueSource.format,
-                value: rawValue
-            });
-            
+                value: rawValue,
+                cultureSelector: 'ru-RU'
+            };
+            const formatter = valueFormatter.create(options);
             return formatter.format(rawValue);
-        } 
-        catch (error) {
+        } catch (error) {
             console.warn('Error using Power BI formatter:', error);
-            return rawValue.toString();
+            return rawValue?.toLocaleString('ru-RU') || '';
         }
-}
+    }
 }

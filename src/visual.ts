@@ -21,7 +21,7 @@ export class Visual implements IVisual {
     private currentDataView: DataView;
     private exportButton: HTMLButtonElement | null = null;
     private isExporting: boolean = false;
-    private pendingExport: boolean = false; // Флаг для отложенного экспорта
+    private pendingExport: boolean = false;
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
@@ -36,8 +36,8 @@ export class Visual implements IVisual {
 
         this.settings = VisualSettings.parse<VisualSettings>(<any>options.dataViews[0]);
         this.currentDataView = options.dataViews[0];
-
-        // Подсчёт строк для диагностики
+        console.log('dataView', this.currentDataView);
+        
         const rowCount = this.countRows(this.currentDataView);
         console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
 
@@ -45,38 +45,28 @@ export class Visual implements IVisual {
             this.handleDataSegment(this.currentDataView, rowCount);
         }
 
-        // Рендерим визуализацию (таблицу)
         this.renderVisualization(rowCount);
 
-        // Если есть отложенный экспорт, выполняем его после обновления таблицы
         if (this.pendingExport) {
             this.exportDataView(rowCount);
             this.pendingExport = false;
         }
     }
 
-    /**
-     * Подсчёт количества строк в матрице (рекурсивно)
-     */
     private countRows(dataView: DataView): number {
         if (!dataView?.matrix?.rows?.root?.children) return 0;
-
         const countChildren = (nodes: powerbi.DataViewMatrixNode[]): number => {
             let total = 0;
             for (const node of nodes) {
-                total++; // сам узел
-                if (node.children) {
-                    total += countChildren(node.children);
-                }
+                total++;
+                if (node.children) total += countChildren(node.children);
             }
             return total;
         };
-
         return countChildren(dataView.matrix.rows.root.children);
     }
 
     private renderVisualization(cntRows: number): void {
-        // Создаём кнопку, если её нет
         if (!this.exportButton) {
             const buttonContainer = document.createElement('div');
             buttonContainer.className = 'export-button-container';
@@ -92,16 +82,16 @@ export class Visual implements IVisual {
             this.target.prepend(buttonContainer);
         }
 
-        // Удаляем старую таблицу
         const existingTable = this.target.querySelector('table');
-        if (existingTable) {
-            existingTable.remove();
-        }
+        if (existingTable) existingTable.remove();
 
         if (this.currentDataView?.matrix) {
-            const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(this.currentDataView.matrix);
+            const valueSources = (this.currentDataView.matrix as any).valueSources;
+            const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
+                this.currentDataView.matrix,
+                valueSources
+            );
             
-            // Применяем настройку скрытия пустых колонок
             if (this.settings?.hideEmptyCols?.hideColsLabel) {
                 this.applyHideEmptyColumnsSetting(formattedMatrix);
             }
@@ -139,11 +129,8 @@ export class Visual implements IVisual {
             console.log("Requesting more data via fetchMoreData(true)...");
             const accepted = this.host.fetchMoreData(true);
             console.log(`fetchMoreData returned: ${accepted}`);
-            // Если fetchMoreData вернул false, ничего не делаем – данные либо закончились, либо лимит.
-            // В следующем update обработаем сегмент.
         } catch (error) {
             console.error("Error in fetchMoreData:", error);
-            // При ошибке пытаемся экспортировать текущие данные
             this.exportDataView(cntRows);
             this.resetExportState();
         }
@@ -158,7 +145,7 @@ export class Visual implements IVisual {
             console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
         } else {
             console.log("No segment → all data collected, scheduling export after render");
-            this.pendingExport = true; // откладываем экспорт до следующей отрисовки
+            this.pendingExport = true;
             console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
         }
     }
@@ -173,7 +160,7 @@ export class Visual implements IVisual {
         }
         try {
             const downloader = new ExcelDownloader();
-            downloader.exportTable(table as HTMLElement, cntRows as number);
+            downloader.exportTable(table as HTMLElement, cntRows);
         } catch (error) {
             console.error("Export failed:", error);
         } finally {
@@ -192,7 +179,6 @@ export class Visual implements IVisual {
 
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): powerbi.VisualObjectInstanceEnumerationObject {
         const enumeration = new ObjectEnumerationBuilder();
-
         switch (options.objectName) {
             case "subTotals":
                 enumeration.pushInstance({
@@ -205,7 +191,6 @@ export class Visual implements IVisual {
                     }
                 });
                 break;
-
             case "hideEmptyCols":
                 enumeration.pushInstance({
                     objectName: "hideEmptyCols",
@@ -217,7 +202,6 @@ export class Visual implements IVisual {
                 });
                 break;
         }
-
         return enumeration.complete();
     }
 
@@ -228,9 +212,7 @@ export class Visual implements IVisual {
 
     private clearDisplay(): void {
         while (this.target.firstChild) {
-            if (this.target.firstChild === this.exportButton?.parentElement) {
-                break;
-            }
+            if (this.target.firstChild === this.exportButton?.parentElement) break;
             this.target.removeChild(this.target.firstChild);
         }
     }

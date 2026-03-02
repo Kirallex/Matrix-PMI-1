@@ -14,9 +14,6 @@ export declare class Visual implements IVisual {
     private pendingExport;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
-    /**
-     * Подсчёт количества строк в матрице (рекурсивно)
-     */
     private countRows;
     private renderVisualization;
     private handleExportClick;

@@ -225,6 +225,42 @@
   color: #721C24;
   background-color: #F8D7DA;
 }
+.export-button-container {
+  text-align: right;
+  margin: 5px 0;
+}
+.export-button {
+  font-family: 'Segoe UI', 'Segoe UI Web', 'Segoe UI Symbol', system-ui, sans-serif;
+  font-weight: 600;
+  /* Semibold */
+  font-size: 10pt;
+  /* 10pt ≈ 13.33px */
+  color: #1E2323;
+  background-color: #E1E1E1;
+  border: none;
+  padding: 5px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.2s, color 0.2s, opacity 0.2s;
+}
+/* Состояние при наведении */
+.export-button:hover {
+  background-color: #C0C0C0;
+  /* чуть темнее основного фона */
+  color: #FFFFFF;
+}
+/* Состояние при нажатии (активная кнопка) */
+.export-button:active {
+  background-color: #1E2323;
+  color: #FFFFFF;
+}
+/* Состояние disabled (неактивная кнопка) */
+.export-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #E1E1E1;
+  /* можно оставить, но через opacity будет полупрозрачным */
+}
 
 .excel-download-modal {
   position: fixed;
