@@ -279,21 +279,62 @@ export class MatrixDataviewHtmlFormatter {
 
     private static formatValue(rawValue: number, valueSourceIndex: number, valueSources?: any[]): string {
         if (valueSourceIndex === undefined || valueSourceIndex < 0 || !valueSources || !valueSources[valueSourceIndex]) {
-            console.warn(`No valueSource for index ${valueSourceIndex}, using toLocaleString`);
             return rawValue?.toLocaleString('ru-RU') || '';
         }
         const valueSource = valueSources[valueSourceIndex];
-        console.log(`formatValue: index=${valueSourceIndex}, format=${valueSource.format}, raw=${rawValue}`);
+        
         try {
-            const options: any = {
-                format: valueSource.format,
-                value: rawValue,
-                cultureSelector: 'ru-RU'
-            };
-            const formatter = valueFormatter.create(options);
-            return formatter.format(rawValue);
+            const formatString = valueSource.format || '0';
+            
+            // Процентные форматы оставляем стандартному форматтеру (они работают корректно)
+            if (formatString.includes('%')) {
+                const options: any = {
+                    format: formatString,
+                    value: rawValue,
+                    cultureSelector: 'ru-RU',
+                    displayUnit: 0
+                };
+                const formatter = valueFormatter.create(options);
+                return formatter.format(rawValue);
+            }
+            
+            // Определяем количество десятичных знаков из строки формата
+            let decimalPlaces = 0;
+            const decimalMatch = /\.(0+)/.exec(formatString);
+            if (decimalMatch) {
+                decimalPlaces = decimalMatch[1].length;
+            }
+            
+            // Округляем значение
+            let roundedValue: number;
+            if (decimalPlaces > 0) {
+                const factor = Math.pow(10, decimalPlaces);
+                roundedValue = Math.round(rawValue * factor) / factor;
+            } else {
+                roundedValue = Math.round(rawValue);
+            }
+            
+            // Определяем, нужен ли разделитель тысяч (пробел в русской локали)
+            // Критерий: наличие запятой в строке формата (напр. "#,##0" или "#,##0.00")
+            const needsThousandsSeparator = formatString.includes(',');
+            
+            // Форматируем с учётом русской локали
+            if (needsThousandsSeparator) {
+                return roundedValue.toLocaleString('ru-RU', {
+                    minimumFractionDigits: decimalPlaces,
+                    maximumFractionDigits: decimalPlaces,
+                    useGrouping: true // включает разделители тысяч (в ru-RU это пробелы)
+                });
+            } else {
+                // Без разделителей тысяч
+                return roundedValue.toLocaleString('ru-RU', {
+                    minimumFractionDigits: decimalPlaces,
+                    maximumFractionDigits: decimalPlaces,
+                    useGrouping: false // отключаем разделители
+                });
+            }
         } catch (error) {
-            console.warn('Error using Power BI formatter:', error);
+            console.warn('Error formatting value:', error);
             return rawValue?.toLocaleString('ru-RU') || '';
         }
     }
