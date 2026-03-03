@@ -13,6 +13,7 @@ import { ObjectEnumerationBuilder } from "./objectEnumerationBuilder";
 import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
 import { MatrixEmptyColumnsHider } from "./hideEmptyCols";
 import VisualDataChangeOperationKind = powerbi.VisualDataChangeOperationKind;
+import { ColumnResizer } from './columnResizer';
 
 export class Visual implements IVisual {
     private target: HTMLElement;
@@ -82,8 +83,12 @@ export class Visual implements IVisual {
             this.target.prepend(buttonContainer);
         }
 
+        // Очищаем старый ресайзер перед удалением таблицы
         const existingTable = this.target.querySelector('table');
-        if (existingTable) existingTable.remove();
+        if (existingTable) {
+            ColumnResizer.cleanup(); // очищаем обработчики
+            existingTable.remove();
+        }
 
         if (this.currentDataView?.matrix) {
             const valueSources = (this.currentDataView.matrix as any).valueSources;
@@ -97,6 +102,12 @@ export class Visual implements IVisual {
             }
             
             this.target.appendChild(formattedMatrix);
+
+            // Инициализируем ресайзер для новой таблицы
+            const table = formattedMatrix.querySelector('table');
+            if (table) {
+                ColumnResizer.init(table);
+            }
         }
     }
 

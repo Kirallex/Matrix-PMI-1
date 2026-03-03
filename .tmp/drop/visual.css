@@ -4,24 +4,10 @@
   font-size: 20px;
   color: #1E2323;
   border-collapse: collapse;
-  background-color: #E1E1E1;
+  background-color: transparent;
   overflow: auto;
-  max-height: 500px;
+  max-height: 400px;
   /* Общие стили для всех ячеек */
-  /* Стили для обычных ячеек данных */
-  /* Стили для заголовков строк */
-  /* Стили для обычных заголовков колонок */
-  /* Стили для верхних строк заголовков */
-  /* Стили для средних строк данных */
-  /* СТИЛИ ДЛЯ ВСЕЙ СТРОКИ С ТОТАЛАМИ */
-  /* Стили для отдельных колонок с тоталами */
-  /* Стили для пустых ячеек */
-  /* Стили для ячеек с числовыми значениями */
-  /* Стили для заголовков с выравниванием */
-  /* Полосы зебры для лучшей читаемости */
-  /* Стили для различных уровней вложенности */
-  /* Адаптивность для мобильных устройств */
-  /* Стили для скроллбаров */
 }
 .datagrid table {
   border-collapse: collapse;
@@ -182,6 +168,18 @@
 }
 .datagrid::-webkit-scrollbar-thumb:hover {
   background: #A8A8A8;
+}
+.datagrid tbody tr.topRow {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: inherit;
+}
+.datagrid tbody tr.totalRow:last-child {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background-color: #66B0C2;
 }
 /* Дополнительные утилитарные классы */
 .text-right {

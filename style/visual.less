@@ -4,19 +4,15 @@
     font-size: 20px;
     color: #1E2323;
     border-collapse: collapse;
-    background-color: #E1E1E1;
-    
-    // Добавляем скроллы
+    background-color: transparent; // прозрачный фон
+
+    // Скроллы и ограничение высоты
     overflow: auto;
-    max-height: 500px; // задайте нужную высоту, можно сделать настраиваемой
+    max-height: 400px; // при необходимости измените или уберите
 
     table {
         border-collapse: collapse;
-        // Убираем table-layout: fixed, чтобы колонки не подстраивались под ширину контейнера
-        // table-layout: auto; (по умолчанию)
         border: 1px solid #E1E1E1;
-        // Убираем width: 100%, чтобы таблица занимала естественную ширину
-        // Можно оставить width: auto (по умолчанию)
     }
 
     /* Общие стили для всех ячеек */
@@ -29,14 +25,12 @@
         border: 1px solid #E1E1E1;
     }
 
-    /* Стили для обычных ячеек данных */
     td {
         background-color: #FFFFFF;
         font-size: 20px;
         color: #1E2323;
     }
 
-    /* Стили для заголовков строк */
     .rowsHeader {
         background-color: #F8F9FA;
         font-weight: 600;
@@ -48,7 +42,6 @@
         z-index: 10;
     }
 
-    /* Стили для обычных заголовков колонок */
     .formatColumnNodes {
         background-color: #F8F9FA;
         font-weight: 600;
@@ -61,22 +54,18 @@
         }
     }
 
-    /* Стили для верхних строк заголовков */
-    .topRow {
-        th {
-            background-color: #F0F2F4;
-            font-weight: 700;
-            border-bottom: 2px solid #D0D5D8;
-            
-            &.formatColumnNodes {
-                background-color: #E8ECEF;
-                font-size: 20px;
-                padding: 8px 5px;
-            }
+    .topRow th {
+        background-color: #F0F2F4;
+        font-weight: 700;
+        border-bottom: 2px solid #D0D5D8;
+        
+        &.formatColumnNodes {
+            background-color: #E8ECEF;
+            font-size: 20px;
+            padding: 8px 5px;
         }
     }
 
-    /* Стили для средних строк данных */
     .midRow {
         th.formatRowNodes {
             background-color: #FFFFFF;
@@ -99,7 +88,6 @@
         }
     }
 
-    /* СТИЛИ ДЛЯ ВСЕЙ СТРОКИ С ТОТАЛАМИ */
     .totalRow {
         background-color: #66B0C2 !important;
         
@@ -119,7 +107,6 @@
         }
     }
 
-    /* Стили для отдельных колонок с тоталами */
     .totalColumn {
         background-color: #66B0C2 !important;
         color: #FFFFFF !important;
@@ -132,7 +119,6 @@
         }
     }
 
-    /* Стили для пустых ячеек */
     td:empty {
         background-color: #FAFBFC;
     }
@@ -141,14 +127,12 @@
         background-color: #66B0C2 !important;
     }
 
-    /* Стили для ячеек с числовыми значениями */
     td:not(:empty) {
         text-align: right;
         font-feature-settings: "tnum";
         font-variant-numeric: tabular-nums;
     }
 
-    /* Стили для заголовков с выравниванием */
     th[style*="text-align: left"] {
         text-align: left !important;
     }
@@ -161,7 +145,6 @@
         text-align: right !important;
     }
 
-    /* Полосы зебры для лучшей читаемости */
     .midRow:nth-child(even) {
         td {
             background-color: #FAFBFC;
@@ -176,7 +159,6 @@
         }
     }
 
-    /* Стили для различных уровней вложенности */
     th.formatRowNodes {
         &:not([style*="nbsp;"]) {
             font-size: 15px;
@@ -197,7 +179,6 @@
         border-bottom: 2px solid #D0D5D8;
     }
 
-    /* Адаптивность для мобильных устройств */
     @media (max-width: 768px) {
         font-size: 12px;
         
@@ -210,7 +191,6 @@
         }
     }
 
-    /* Стили для скроллбаров */
     &::-webkit-scrollbar {
         width: 10px;
         height: 10px;
@@ -227,6 +207,22 @@
         &:hover {
             background: #A8A8A8;
         }
+    }
+
+    // Закрепление заголовков
+    tbody tr.topRow {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: inherit;
+    }
+
+    // Закрепление итоговой строки (последняя строка с классом totalRow)
+    tbody tr.totalRow:last-child {
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+        background-color: #66B0C2;
     }
 }
 
