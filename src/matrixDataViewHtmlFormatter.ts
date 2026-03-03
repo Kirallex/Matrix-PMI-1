@@ -259,7 +259,7 @@ export class MatrixDataviewHtmlFormatter {
                     sourceIndex = colIndex;
                 }
                 // Добавим отладку
-                console.log(`colIndex=${colIndex}, sourceIndex=${sourceIndex}, value=${value.value}`);
+                //console.log(`colIndex=${colIndex}, sourceIndex=${sourceIndex}, value=${value.value}`);
                 const formattedValue = this.formatValue(value.value, sourceIndex, valueSources);
                 tdElement.appendChild(document.createTextNode(formattedValue));
             } 

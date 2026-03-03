@@ -14,6 +14,7 @@ import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInst
 import { MatrixEmptyColumnsHider } from "./hideEmptyCols";
 import VisualDataChangeOperationKind = powerbi.VisualDataChangeOperationKind;
 import { ColumnResizer } from './columnResizer';
+import { HeightResizer } from './heightResizer'; 
 
 export class Visual implements IVisual {
     private target: HTMLElement;
@@ -27,6 +28,7 @@ export class Visual implements IVisual {
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
         this.host = options.host;
+        window.addEventListener('resize', this.handleResize);
     }
 
     public update(options: VisualUpdateOptions) {
@@ -34,6 +36,8 @@ export class Visual implements IVisual {
             this.clearDisplay();
             return;
         }
+
+        //console.log('update called, dataView present:', !!options?.dataViews?.[0]);
 
         this.settings = VisualSettings.parse<VisualSettings>(<any>options.dataViews[0]);
         this.currentDataView = options.dataViews[0];
@@ -68,26 +72,26 @@ export class Visual implements IVisual {
     }
 
     private renderVisualization(cntRows: number): void {
+        // Создаём кнопку, если её нет
         if (!this.exportButton) {
             const buttonContainer = document.createElement('div');
             buttonContainer.className = 'export-button-container';
-            
             this.exportButton = document.createElement('button');
             this.exportButton.id = "exportBtn";
             this.exportButton.type = "button";
             this.exportButton.className = "export-button";
             this.exportButton.textContent = "Export Data";
             this.exportButton.addEventListener('click', () => this.handleExportClick(cntRows));
-            
             buttonContainer.appendChild(this.exportButton);
             this.target.prepend(buttonContainer);
         }
 
-        // Очищаем старый ресайзер перед удалением таблицы
-        const existingTable = this.target.querySelector('table');
-        if (existingTable) {
-            ColumnResizer.cleanup(); // очищаем обработчики
-            existingTable.remove();
+        // Удаляем все старые контейнеры datagrid (включая пустые)
+        const existingGrids = this.target.querySelectorAll('.datagrid');
+        if (existingGrids.length > 0) {
+            ColumnResizer.cleanup();
+            HeightResizer.cleanup();
+            existingGrids.forEach(grid => grid.remove());
         }
 
         if (this.currentDataView?.matrix) {
@@ -96,18 +100,19 @@ export class Visual implements IVisual {
                 this.currentDataView.matrix,
                 valueSources
             );
-            
+
             if (this.settings?.hideEmptyCols?.hideColsLabel) {
                 this.applyHideEmptyColumnsSetting(formattedMatrix);
             }
-            
+
             this.target.appendChild(formattedMatrix);
 
-            // Инициализируем ресайзер для новой таблицы
+            // Инициализируем ресайзеры для нового контейнера
             const table = formattedMatrix.querySelector('table');
             if (table) {
                 ColumnResizer.init(table);
             }
+            HeightResizer.init(formattedMatrix);
         }
     }
 
@@ -159,6 +164,20 @@ export class Visual implements IVisual {
             this.pendingExport = true;
             console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
         }
+    }
+
+
+    private handleResize = (): void => {
+        // Если есть данные, перерисовываем визуализацию
+        if (this.currentDataView) {
+            // Передаём текущее количество строк (может не измениться, но важно для консистентности)
+            const rowCount = this.countRows(this.currentDataView);
+            this.renderVisualization(rowCount);
+        }
+    }
+
+    public destroy(): void {
+        window.removeEventListener('resize', this.handleResize);
     }
 
     private exportDataView(cntRows: number): void {

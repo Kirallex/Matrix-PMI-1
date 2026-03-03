@@ -3,16 +3,21 @@
     font-family: 'Segoe UI', wf_segoe-ui_normal, helvetica, arial, sans-serif;
     font-size: 20px;
     color: #1E2323;
-    border-collapse: collapse;
-    background-color: transparent; // прозрачный фон
+    background-color: transparent;
 
-    // Скроллы и ограничение высоты
+    // Скроллы и размеры
     overflow: auto;
-    max-height: 400px; // при необходимости измените или уберите
+    height: 400px;                // начальная высота, будет меняться ресайзером
+    max-height: none;              // чтобы инлайн-стиль работал
+    position: relative;            // для ручки ресайзера
 
     table {
         border-collapse: collapse;
         border: 1px solid #E1E1E1;
+        // ширина по содержимому (не подстраивается под контейнер)
+        width: auto;
+        // высота по содержимому (не растягивается)
+        height: auto;
     }
 
     /* Общие стили для всех ячеек */
@@ -31,6 +36,7 @@
         color: #1E2323;
     }
 
+    /* Закрепление заголовков строк слева */
     .rowsHeader {
         background-color: #F8F9FA;
         font-weight: 600;
@@ -54,6 +60,7 @@
         }
     }
 
+    /* Верхние строки заголовков (столбцов) */
     .topRow th {
         background-color: #F0F2F4;
         font-weight: 700;
@@ -66,6 +73,7 @@
         }
     }
 
+    /* Основные строки данных */
     .midRow {
         th.formatRowNodes {
             background-color: #FFFFFF;
@@ -88,6 +96,7 @@
         }
     }
 
+    /* Строка с общими тоталами */
     .totalRow {
         background-color: #66B0C2 !important;
         
@@ -107,6 +116,7 @@
         }
     }
 
+    /* Ячейки с тоталами (могут быть внутри строки) */
     .totalColumn {
         background-color: #66B0C2 !important;
         color: #FFFFFF !important;
@@ -119,6 +129,7 @@
         }
     }
 
+    /* Пустые ячейки */
     td:empty {
         background-color: #FAFBFC;
     }
@@ -127,12 +138,14 @@
         background-color: #66B0C2 !important;
     }
 
+    /* Числовые значения выравниваем вправо */
     td:not(:empty) {
         text-align: right;
         font-feature-settings: "tnum";
         font-variant-numeric: tabular-nums;
     }
 
+    /* Переопределения выравнивания */
     th[style*="text-align: left"] {
         text-align: left !important;
     }
@@ -145,6 +158,7 @@
         text-align: right !important;
     }
 
+    /* Полосатая раскраска строк */
     .midRow:nth-child(even) {
         td {
             background-color: #FAFBFC;
@@ -159,6 +173,7 @@
         }
     }
 
+    /* Стили для отступов в зависимости от уровня */
     th.formatRowNodes {
         &:not([style*="nbsp;"]) {
             font-size: 15px;
@@ -175,10 +190,7 @@
         }
     }
 
-    .topRow th {
-        border-bottom: 2px solid #D0D5D8;
-    }
-
+    /* Адаптивность */
     @media (max-width: 768px) {
         font-size: 12px;
         
@@ -191,6 +203,7 @@
         }
     }
 
+    /* Кастомные скроллбары */
     &::-webkit-scrollbar {
         width: 10px;
         height: 10px;
@@ -209,7 +222,7 @@
         }
     }
 
-    // Закрепление заголовков
+    /* Закрепление заголовков столбцов (все строки с классом topRow) */
     tbody tr.topRow {
         position: sticky;
         top: 0;
@@ -217,7 +230,7 @@
         background-color: inherit;
     }
 
-    // Закрепление итоговой строки (последняя строка с классом totalRow)
+    /* Закрепление итоговой строки (последняя строка с классом totalRow) */
     tbody tr.totalRow:last-child {
         position: sticky;
         bottom: 0;
@@ -227,34 +240,18 @@
 }
 
 /* Дополнительные утилитарные классы */
-.text-right {
-    text-align: right !important;
-}
-
-.text-center {
-    text-align: center !important;
-}
-
-.text-left {
-    text-align: left !important;
-}
-
-.border-top {
-    border-top: 2px solid #E1E1E1 !important;
-}
-
-.border-bottom {
-    border-bottom: 2px solid #E1E1E1 !important;
-}
+.text-right { text-align: right !important; }
+.text-center { text-align: center !important; }
+.text-left { text-align: left !important; }
+.border-top { border-top: 2px solid #E1E1E1 !important; }
+.border-bottom { border-bottom: 2px solid #E1E1E1 !important; }
 
 /* Анимации */
-.datagrid {
-    th, td {
-        transition: all 0.2s ease-in-out;
-    }
+.datagrid th, .datagrid td {
+    transition: all 0.2s ease-in-out;
 }
 
-/* Стили для состояний */
+/* Стили для выделения */
 .highlight {
     background-color: #FFF3CD !important;
     color: #856404 !important;
@@ -270,7 +267,7 @@
     background-color: #F8D7DA;
 }
 
-/* Стили для кнопки экспорта */
+/* Стили для кнопки экспорта (без изменений) */
 .export-button-container {
     text-align: right;
     margin: 5px 0;

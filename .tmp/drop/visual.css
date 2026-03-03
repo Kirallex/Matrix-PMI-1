@@ -3,15 +3,32 @@
   font-family: 'Segoe UI', wf_segoe-ui_normal, helvetica, arial, sans-serif;
   font-size: 20px;
   color: #1E2323;
-  border-collapse: collapse;
   background-color: transparent;
   overflow: auto;
-  max-height: 400px;
+  height: 400px;
+  max-height: none;
+  position: relative;
   /* Общие стили для всех ячеек */
+  /* Закрепление заголовков строк слева */
+  /* Верхние строки заголовков (столбцов) */
+  /* Основные строки данных */
+  /* Строка с общими тоталами */
+  /* Ячейки с тоталами (могут быть внутри строки) */
+  /* Пустые ячейки */
+  /* Числовые значения выравниваем вправо */
+  /* Переопределения выравнивания */
+  /* Полосатая раскраска строк */
+  /* Стили для отступов в зависимости от уровня */
+  /* Адаптивность */
+  /* Кастомные скроллбары */
+  /* Закрепление заголовков столбцов (все строки с классом topRow) */
+  /* Закрепление итоговой строки (последняя строка с классом totalRow) */
 }
 .datagrid table {
   border-collapse: collapse;
   border: 1px solid #E1E1E1;
+  width: auto;
+  height: auto;
 }
 .datagrid th,
 .datagrid td {
@@ -140,9 +157,6 @@
   font-size: 13px;
   color: #5A6268;
 }
-.datagrid .topRow th {
-  border-bottom: 2px solid #D0D5D8;
-}
 @media (max-width: 768px) {
   .datagrid {
     font-size: 12px;
@@ -202,7 +216,7 @@
 .datagrid td {
   transition: all 0.2s ease-in-out;
 }
-/* Стили для состояний */
+/* Стили для выделения */
 .highlight {
   background-color: #FFF3CD !important;
   color: #856404 !important;
@@ -215,7 +229,7 @@
   color: #721C24;
   background-color: #F8D7DA;
 }
-/* Стили для кнопки экспорта */
+/* Стили для кнопки экспорта (без изменений) */
 .export-button-container {
   text-align: right;
   margin: 5px 0;

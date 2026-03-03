@@ -19,6 +19,8 @@ export declare class Visual implements IVisual {
     private handleExportClick;
     private requestMoreData;
     private handleDataSegment;
+    private handleResize;
+    destroy(): void;
     private exportDataView;
     private resetExportState;
     enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): powerbi.VisualObjectInstanceEnumerationObject;
