@@ -1,27 +1,22 @@
-  .datagrid {
-    cursor: default;
-  // }
-  // .datagrid table tbody td {
-  //   border: 1px solid black
-  // }
-  // .datagrid table tbody th {
-  //   border: 1px solid black
-  }
-
 .datagrid {
     cursor: default;
     font-family: 'Segoe UI', wf_segoe-ui_normal, helvetica, arial, sans-serif;
     font-size: 20px;
     color: #1E2323;
     border-collapse: collapse;
-    width: 100%;
     background-color: #E1E1E1;
+    
+    // Добавляем скроллы
+    overflow: auto;
+    max-height: 500px; // задайте нужную высоту, можно сделать настраиваемой
 
     table {
-        width: 100%;
         border-collapse: collapse;
-        table-layout: fixed;
-        border: 1px solid #E1E1E1; // Добавлена внешняя граница таблицы
+        // Убираем table-layout: fixed, чтобы колонки не подстраивались под ширину контейнера
+        // table-layout: auto; (по умолчанию)
+        border: 1px solid #E1E1E1;
+        // Убираем width: 100%, чтобы таблица занимала естественную ширину
+        // Можно оставить width: auto (по умолчанию)
     }
 
     /* Общие стили для всех ячеек */
@@ -31,7 +26,7 @@
         vertical-align: top;
         box-sizing: border-box;
         position: relative;
-        border: 1px solid #E1E1E1; // Добавлены границы для всех ячеек
+        border: 1px solid #E1E1E1;
     }
 
     /* Стили для обычных ячеек данных */
@@ -39,7 +34,6 @@
         background-color: #FFFFFF;
         font-size: 20px;
         color: #1E2323;
-        // Убрал box-shadow так как теперь есть настоящие границы
     }
 
     /* Стили для заголовков строк */
@@ -47,7 +41,7 @@
         background-color: #F8F9FA;
         font-weight: 600;
         color: #1E2323;
-        border-right: 2px solid #D0D5D8; // Более темная граница для разделения
+        border-right: 2px solid #D0D5D8;
         min-width: 150px;
         position: sticky;
         left: 0;
@@ -72,7 +66,7 @@
         th {
             background-color: #F0F2F4;
             font-weight: 700;
-            border-bottom: 2px solid #D0D5D8; // Более выраженная нижняя граница
+            border-bottom: 2px solid #D0D5D8;
             
             &.formatColumnNodes {
                 background-color: #E8ECEF;
@@ -88,7 +82,7 @@
             background-color: #FFFFFF;
             font-weight: 600;
             color: #1E2323;
-            border-right: 2px solid #D0D5D8; // Более темная граница для разделения
+            border-right: 2px solid #D0D5D8;
             
             &[style*="text-align: left"] {
                 padding-left: 5px;
@@ -109,15 +103,13 @@
     .totalRow {
         background-color: #66B0C2 !important;
         
-        /* Все ячейки в строке тоталов */
         th, td {
             background-color: #66B0C2 !important;
             color: #FFFFFF !important;
             font-weight: bold !important;
-            border-color: #5A9BAD !important; // Специальные границы для тоталов
+            border-color: #5A9BAD !important;
         }
 
-        /* Специфичные стили для заголовков в строке тоталов */
         th.formatRowNodes {
             background-color: #66B0C2 !important;
             color: #FFFFFF !important;
@@ -140,13 +132,11 @@
         }
     }
 
-    /* Стили для пустых ячеек - УБРАЛ ПРОЧЕРКИ */
+    /* Стили для пустых ячеек */
     td:empty {
         background-color: #FAFBFC;
-        // Убрал псевдоэлемент с прочерком
     }
 
-    /* В строке тоталов пустые ячейки тоже должны быть синими */
     .totalRow td:empty {
         background-color: #66B0C2 !important;
     }
@@ -181,7 +171,6 @@
             }
         }
         
-        // Для тоталов не применяем зебру
         &.totalRow td {
             background-color: #66B0C2 !important;
         }
@@ -204,7 +193,6 @@
         }
     }
 
-    /* Улучшенные стили для границ заголовков */
     .topRow th {
         border-bottom: 2px solid #D0D5D8;
     }
@@ -222,11 +210,10 @@
         }
     }
 
-    /* Стили для скролла если таблица большая */
-    overflow-x: auto;
-    
+    /* Стили для скроллбаров */
     &::-webkit-scrollbar {
-        height: 8px;
+        width: 10px;
+        height: 10px;
     }
     
     &::-webkit-scrollbar-track {
@@ -235,7 +222,7 @@
     
     &::-webkit-scrollbar-thumb {
         background: #C1C1C1;
-        border-radius: 4px;
+        border-radius: 5px;
         
         &:hover {
             background: #A8A8A8;
@@ -264,7 +251,7 @@
     border-bottom: 2px solid #E1E1E1 !important;
 }
 
-/* Анимации для плавного изменения */
+/* Анимации */
 .datagrid {
     th, td {
         transition: all 0.2s ease-in-out;
@@ -287,9 +274,7 @@
     background-color: #F8D7DA;
 }
 
-
-
-
+/* Стили для кнопки экспорта */
 .export-button-container {
     text-align: right;
     margin: 5px 0;
@@ -297,8 +282,8 @@
 
 .export-button {
     font-family: 'Segoe UI', 'Segoe UI Web', 'Segoe UI Symbol', system-ui, sans-serif;
-    font-weight: 600; /* Semibold */
-    font-size: 10pt; /* 10pt ≈ 13.33px */
+    font-weight: 600;
+    font-size: 10pt;
     color: #1E2323;
     background-color: #E1E1E1;
     border: none;
@@ -308,21 +293,18 @@
     transition: background-color 0.2s, color 0.2s, opacity 0.2s;
 }
 
-/* Состояние при наведении */
 .export-button:hover {
-    background-color: #C0C0C0; /* чуть темнее основного фона */
+    background-color: #C0C0C0;
     color: #FFFFFF;
 }
 
-/* Состояние при нажатии (активная кнопка) */
 .export-button:active {
     background-color: #1E2323;
     color: #FFFFFF;
 }
 
-/* Состояние disabled (неактивная кнопка) */
 .export-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    background-color: #E1E1E1; /* можно оставить, но через opacity будет полупрозрачным */
+    background-color: #E1E1E1;
 }
