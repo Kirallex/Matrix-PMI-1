@@ -3,6 +3,8 @@ import "./../style/visual.less";
 import powerbi from "powerbi-visuals-api";
 import { MatrixDataviewHtmlFormatter } from "./matrixDataViewHtmlFormatter";
 import { ExcelDownloader } from "./downloadExcel";
+import { ColumnResizer } from "./columnResizer";
+import { HeightResizer } from "./heightResizer";
 import IVisual = powerbi.extensibility.visual.IVisual;
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
@@ -13,8 +15,6 @@ import { ObjectEnumerationBuilder } from "./objectEnumerationBuilder";
 import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
 import { MatrixEmptyColumnsHider } from "./hideEmptyCols";
 import VisualDataChangeOperationKind = powerbi.VisualDataChangeOperationKind;
-import { ColumnResizer } from './columnResizer';
-import { HeightResizer } from './heightResizer'; 
 
 export class Visual implements IVisual {
     private target: HTMLElement;
@@ -24,12 +24,24 @@ export class Visual implements IVisual {
     private exportButton: HTMLButtonElement | null = null;
     private isExporting: boolean = false;
     private pendingExport: boolean = false;
+    private expandedNodes: Set<string> = new Set(); // множество путей раскрытых узлов
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
         this.host = options.host;
-        window.addEventListener('resize', this.handleResize);
+        //window.addEventListener('resize', this.handleResize);
     }
+
+    // public destroy(): void {
+    //     window.removeEventListener('resize', this.handleResize);
+    // }
+
+    // private handleResize = (): void => {
+    //     if (this.currentDataView) {
+    //         const rowCount = this.countRows(this.currentDataView);
+    //         this.renderVisualization(rowCount);
+    //     }
+    // };
 
     public update(options: VisualUpdateOptions) {
         if (!options?.dataViews?.[0]) {
@@ -37,14 +49,18 @@ export class Visual implements IVisual {
             return;
         }
 
-        //console.log('update called, dataView present:', !!options?.dataViews?.[0]);
-
         this.settings = VisualSettings.parse<VisualSettings>(<any>options.dataViews[0]);
         this.currentDataView = options.dataViews[0];
         console.log('dataView', this.currentDataView);
         
         const rowCount = this.countRows(this.currentDataView);
         console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
+
+        // Инициализируем expandedNodes при получении новых данных (раскрываем все узлы с детьми)
+        if (this.currentDataView?.matrix?.rows?.root) {
+            this.expandedNodes.clear();
+            this.buildExpandedNodes(this.currentDataView.matrix.rows.root);
+        }
 
         if (this.isExporting) {
             this.handleDataSegment(this.currentDataView, rowCount);
@@ -55,6 +71,25 @@ export class Visual implements IVisual {
         if (this.pendingExport) {
             this.exportDataView(rowCount);
             this.pendingExport = false;
+        }
+    }
+
+    /**
+     * Рекурсивно строит множество путей для всех узлов, имеющих детей (раскрыты по умолчанию)
+     */
+    private buildExpandedNodes(node: any, path: string = ''): void {
+        if (node.children && node.children.length > 0 && !node.isSubtotal) {
+            // Текущий узел имеет детей – добавляем его путь
+            this.expandedNodes.add(path);
+            // Рекурсивно обходим детей
+            for (let i = 0; i < node.children.length; i++) {
+                const child = node.children[i];
+                // Формируем уникальный путь: используем levelSourceIndex или value или индекс
+                const childPath = path 
+                    ? `${path}-${child.levelSourceIndex ?? child.value ?? i}` 
+                    : `${child.levelSourceIndex ?? child.value ?? i}`;
+                this.buildExpandedNodes(child, childPath);
+            }
         }
     }
 
@@ -71,17 +106,21 @@ export class Visual implements IVisual {
         return countChildren(dataView.matrix.rows.root.children);
     }
 
+    private columnWidths: { [colIndex: number]: number } = {};
+    
     private renderVisualization(cntRows: number): void {
-        // Создаём кнопку, если её нет
+        // Создаём кнопку экспорта, если её ещё нет
         if (!this.exportButton) {
             const buttonContainer = document.createElement('div');
             buttonContainer.className = 'export-button-container';
+            
             this.exportButton = document.createElement('button');
             this.exportButton.id = "exportBtn";
             this.exportButton.type = "button";
             this.exportButton.className = "export-button";
             this.exportButton.textContent = "Export Data";
             this.exportButton.addEventListener('click', () => this.handleExportClick(cntRows));
+            
             buttonContainer.appendChild(this.exportButton);
             this.target.prepend(buttonContainer);
         }
@@ -89,30 +128,84 @@ export class Visual implements IVisual {
         // Удаляем все старые контейнеры datagrid (включая пустые)
         const existingGrids = this.target.querySelectorAll('.datagrid');
         if (existingGrids.length > 0) {
+            // Очищаем ресайзеры перед удалением
             ColumnResizer.cleanup();
             HeightResizer.cleanup();
             existingGrids.forEach(grid => grid.remove());
         }
 
         if (this.currentDataView?.matrix) {
+            // Получаем valueSources (нужны для форматирования)
             const valueSources = (this.currentDataView.matrix as any).valueSources;
+
+            // Создаём HTML-таблицу с учётом раскрытых узлов
             const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
                 this.currentDataView.matrix,
-                valueSources
+                valueSources,
+                this.expandedNodes   // передаём Set с путями раскрытых узлов
             );
 
+            // Применяем настройку скрытия пустых колонок
             if (this.settings?.hideEmptyCols?.hideColsLabel) {
                 this.applyHideEmptyColumnsSetting(formattedMatrix);
             }
 
+            // Добавляем таблицу в DOM
             this.target.appendChild(formattedMatrix);
 
-            // Инициализируем ресайзеры для нового контейнера
+            // Применяем сохранённые ширины колонок
             const table = formattedMatrix.querySelector('table');
             if (table) {
-                ColumnResizer.init(table);
+                this.applyColumnWidths(table);
+            }
+
+            // Добавляем обработчики кликов на кнопки раскрытия/свёртывания
+            const expandButtons = formattedMatrix.querySelectorAll('.expandCollapseButton');
+            expandButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const path = (e.target as HTMLElement).dataset.path;
+                    if (path) {
+                        // Переключаем состояние узла
+                        if (this.expandedNodes.has(path)) {
+                            this.expandedNodes.delete(path);
+                        } else {
+                            this.expandedNodes.add(path);
+                        }
+                        // Перерисовываем таблицу с новым состоянием (ширины сохранятся через applyColumnWidths)
+                        this.renderVisualization(this.countRows(this.currentDataView));
+                    }
+                });
+            });
+
+            // Инициализируем ресайзеры для новой таблицы
+            if (table) {
+                // Передаём колбэк для сохранения ширины при изменении
+                ColumnResizer.init(table, (colIndex: number, newWidth: number) => {
+                    this.columnWidths[colIndex] = newWidth;
+                });
             }
             HeightResizer.init(formattedMatrix);
+        }
+    }
+
+
+    /**
+ * Применяет сохранённые ширины к таблице
+ */
+    private applyColumnWidths(table: HTMLTableElement): void {
+        for (let colIndex = 0; colIndex < table.rows[0]?.cells.length; colIndex++) {
+            const width = this.columnWidths[colIndex];
+            if (width) {
+                for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
+                    const cell = table.rows[rowIndex].cells[colIndex];
+                    if (cell) {
+                        cell.style.width = width + 'px';
+                        cell.style.minWidth = width + 'px';
+                        cell.style.maxWidth = width + 'px';
+                    }
+                }
+            }
         }
     }
 
@@ -164,20 +257,6 @@ export class Visual implements IVisual {
             this.pendingExport = true;
             console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
         }
-    }
-
-
-    private handleResize = (): void => {
-        // Если есть данные, перерисовываем визуализацию
-        if (this.currentDataView) {
-            // Передаём текущее количество строк (может не измениться, но важно для консистентности)
-            const rowCount = this.countRows(this.currentDataView);
-            this.renderVisualization(rowCount);
-        }
-    }
-
-    public destroy(): void {
-        window.removeEventListener('resize', this.handleResize);
     }
 
     private exportDataView(cntRows: number): void {

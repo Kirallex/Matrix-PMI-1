@@ -1,4 +1,3 @@
-// columnResizer.ts Метод для изменения ширины колонок с помощью мышки
 export class ColumnResizer {
     private static resizing: boolean = false;
     private static currentTh: HTMLTableCellElement | null = null;
@@ -6,15 +5,14 @@ export class ColumnResizer {
     private static startWidth: number = 0;
     private static currentTable: HTMLTableElement | null = null;
     private static resizeHandles: HTMLElement[] = [];
+    private static onResizeCallback: ((colIndex: number, newWidth: number) => void) | null = null;
 
-    public static init(table: HTMLTableElement): void {
-        // Очищаем предыдущую таблицу, если была
+    public static init(table: HTMLTableElement, onResize?: (colIndex: number, newWidth: number) => void): void {
         this.cleanup();
-        
+        this.onResizeCallback = onResize || null;
         this.currentTable = table;
         const headers = table.querySelectorAll('th');
         headers.forEach(th => {
-            // Добавляем "ручку" для ресайза
             const resizer = document.createElement('div');
             resizer.style.position = 'absolute';
             resizer.style.top = '0';
@@ -26,7 +24,6 @@ export class ColumnResizer {
             resizer.style.zIndex = '1';
             resizer.style.backgroundColor = 'transparent';
             
-            // Убедимся, что ячейка имеет позиционирование
             if (getComputedStyle(th).position === 'static') {
                 th.style.position = 'relative';
             }
@@ -49,7 +46,6 @@ export class ColumnResizer {
         this.currentTh = th;
         this.startX = e.clientX;
         this.startWidth = th.offsetWidth;
-        
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
     }
@@ -58,25 +54,24 @@ export class ColumnResizer {
         if (!this.resizing || !this.currentTh || !this.currentTable) return;
         
         const diff = e.clientX - this.startX;
-        const newWidth = this.startWidth + diff;
-        
-        // Минимальная ширина
-        if (newWidth < 30) return;
-        
-        // Определяем индекс колонки
+        const newWidth = Math.max(30, this.startWidth + diff); // минимальная ширина 30px
         const cellIndex = this.currentTh.cellIndex;
         
-        // Применяем ширину ко всем ячейкам этой колонки
-        const rows = this.currentTable.rows;
-        for (let i = 0; i < rows.length; i++) {
-            const cell = rows[i].cells[cellIndex];
+        // Применяем ко всем ячейкам колонки
+        for (let i = 0; i < this.currentTable.rows.length; i++) {
+            const cell = this.currentTable.rows[i].cells[cellIndex];
             if (cell) {
                 cell.style.width = newWidth + 'px';
                 cell.style.minWidth = newWidth + 'px';
                 cell.style.maxWidth = newWidth + 'px';
             }
         }
-    }
+
+        // Вызываем колбэк, если есть
+        if (this.onResizeCallback) {
+            this.onResizeCallback(cellIndex, newWidth);
+        }
+    };
 
     private static onMouseUp = (e: MouseEvent): void => {
         if (this.resizing) {
@@ -85,20 +80,16 @@ export class ColumnResizer {
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
         }
-    }
+    };
 
     public static cleanup(): void {
-        // Удаляем все добавленные ресайзеры
         this.resizeHandles.forEach(handle => handle.remove());
         this.resizeHandles = [];
-        
-        // Удаляем глобальные обработчики
         document.removeEventListener('mousemove', this.onMouseMove);
         document.removeEventListener('mouseup', this.onMouseUp);
-        
-        // Сбрасываем состояние
         this.resizing = false;
         this.currentTh = null;
         this.currentTable = null;
+        this.onResizeCallback = null;
     }
 }

@@ -1,22 +1,17 @@
-// heightResizer.ts модуль для регулировки размера таблицы с помощью мыши
 export class HeightResizer {
     private static resizing: boolean = false;
     private static container: HTMLElement | null = null;
     private static handle: HTMLElement | null = null;
     private static startY: number = 0;
     private static startHeight: number = 0;
-    private static minHeight: number = 100; // минимальная высота в пикселях
+    private static minHeight: number = 100;
 
     public static init(container: HTMLElement): void {
-        this.cleanup(); // очищаем предыдущий ресайзер
-
+        this.cleanup();
         this.container = container;
-        // Убедимся, что контейнер позиционирован относительно
         if (getComputedStyle(container).position === 'static') {
             container.style.position = 'relative';
         }
-
-        // Создаём ручку для изменения размера
         this.handle = document.createElement('div');
         this.handle.style.cssText = `
             position: absolute;
@@ -29,8 +24,6 @@ export class HeightResizer {
             z-index: 20;
         `;
         container.appendChild(this.handle);
-
-        // Добавляем обработчики
         this.handle.addEventListener('mousedown', this.onMouseDown);
         document.addEventListener('mousemove', this.onMouseMove);
         document.addEventListener('mouseup', this.onMouseUp);
@@ -51,7 +44,15 @@ export class HeightResizer {
         const diff = e.clientY - this.startY;
         const newHeight = Math.max(this.minHeight, this.startHeight + diff);
         this.container.style.height = newHeight + 'px';
-        this.container.style.maxHeight = newHeight + 'px'; // обновляем и max-height
+
+        // Синхронизируем высоту таблицы
+        const table = this.container.querySelector('table');
+        if (table) {
+            table.style.height = '100%'; // важно: принудительно применяем height:100%
+            // Иногда нужно сбросить, чтобы пересчиталось
+            table.style.height = ''; // сброс
+            table.style.height = '100%'; // применяем снова
+        }
     };
 
     private static onMouseUp = (e: MouseEvent): void => {

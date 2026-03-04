@@ -4,7 +4,8 @@ import { valueFormatter } from "powerbi-visuals-utils-formattingutils";
 export class MatrixDataviewHtmlFormatter {
     public static formatDataViewMatrix(
         matrix: powerbi.DataViewMatrix,
-        valueSources?: powerbi.DataViewMetadataColumn[]
+        valueSources?: powerbi.DataViewMetadataColumn[],
+        expandedNodes?: Set<string> // добавляем параметр
     ): HTMLElement {
         const htmlElement = document.createElement('div');
         htmlElement.classList.add('datagrid');
@@ -19,7 +20,7 @@ export class MatrixDataviewHtmlFormatter {
         }
         
         this.formatColumnHeaders(matrix.columns, matrix.rows, tbodyElement);
-        this.formatRowNodes(matrix.rows.root, tbodyElement, matrix.columns, valueSources, columnSourceIndices);
+        this.formatRowNodes(matrix.rows.root, tbodyElement, matrix.columns, valueSources, columnSourceIndices, expandedNodes, '');
         
         tableElement.appendChild(tbodyElement);
         htmlElement.appendChild(tableElement);
@@ -169,62 +170,85 @@ export class MatrixDataviewHtmlFormatter {
         topElement: HTMLElement,
         columns: powerbi.DataViewHierarchy,
         valueSources?: powerbi.DataViewMetadataColumn[],
-        columnSourceIndices?: number[]
+        columnSourceIndices?: number[],
+        expandedNodes?: Set<string>,      // новый параметр
+        path: string = ''                 // путь к текущему узлу
     ) {
         if (!(typeof root.level === 'undefined' || root.level === null)) {
             const trElement = document.createElement('tr');
             const thElement = document.createElement('th');
             thElement.setAttribute('class', 'formatRowNodes');
             thElement.style.textAlign = 'left';
+            
+            // Строим отступы
             let headerText = "";
             for (let level = 0; level < root.level; level++) {
                 headerText += '\u00A0\u00A0\u00A0\u00A0';
             }
             
+            // Формируем значение ячейки
             let displayValue = "";
             if (root.isSubtotal) {
                 displayValue = "Totals";
                 headerText += displayValue;
-                const textElement = document.createTextNode(headerText);
-                thElement.appendChild(textElement);
-                trElement.appendChild(thElement);
-                trElement.classList.add('totalRow');
             } else if (root.levelSourceIndex !== undefined) {
                 displayValue = root.levelSourceIndex.value !== undefined ? 
                             root.levelSourceIndex.value : 
                             (root.levelValues && root.levelValues[0] ? 
                             root.levelValues[0].value : "");
                 headerText += displayValue;
-                const textElement = document.createTextNode(headerText);
-                thElement.appendChild(textElement);
-                trElement.appendChild(thElement);
-                trElement.classList.add('midRow');
             } else {
                 displayValue = root.value !== undefined ? root.value : "";
                 headerText += displayValue;
-                const textElement = document.createTextNode(headerText);
-                thElement.appendChild(textElement);
-                trElement.appendChild(thElement);
-                trElement.classList.add('midRow');
-                
-                if (root.children && root.children.length > 0) {
-                    const subtotalChild = root.children.find(child => child.isSubtotal);
-                    if (subtotalChild && subtotalChild.values) {
-                        this.addDataCells(trElement, subtotalChild.values, columns, valueSources, columnSourceIndices);
-                    }
-                }
             }
             
+            // Добавляем кнопку раскрытия, если есть дети
+            const hasChildren = root.children && root.children.length > 0 && !root.isSubtotal;
+            if (hasChildren) {
+                const expandBtn = document.createElement('span');
+                expandBtn.className = 'expandCollapseButton';
+                // Используем символы +/–; можно заменить на плюс/минус в кружке
+                expandBtn.textContent = expandedNodes?.has(path) ? '➖' : '➕';
+                expandBtn.dataset.path = path;
+                // Вставляем кнопку перед текстом
+                thElement.appendChild(expandBtn);
+            }
+            
+            // Добавляем текст (с отступами)
+            const textNode = document.createTextNode(headerText);
+            thElement.appendChild(textNode);
+            
+            trElement.appendChild(thElement);
+            
+            // Определяем класс строки
+            if (root.isSubtotal) {
+                trElement.classList.add('totalRow');
+            } else {
+                trElement.classList.add('midRow');
+            }
+            
+            // Добавляем ячейки данных, если есть
             if (root.values && !(root.children && root.children.length > 0 && !root.isSubtotal)) {
                 this.addDataCells(trElement, root.values, columns, valueSources, columnSourceIndices);
+            } else if (root.children && root.children.length > 0) {
+                // Если есть дети и узел не тотал, то для этой строки берём данные из дочернего тотала (если есть)
+                const subtotalChild = root.children.find(child => child.isSubtotal);
+                if (subtotalChild && subtotalChild.values) {
+                    this.addDataCells(trElement, subtotalChild.values, columns, valueSources, columnSourceIndices);
+                }
             }
             
             topElement.appendChild(trElement);
         }
-        if (root.children) {
+        
+        // Рекурсивно обрабатываем детей, только если узел раскрыт (или это не обычный узел с детьми)
+        if (root.children && !(root.isSubtotal) && expandedNodes?.has(path)) {
             for (const child of root.children) {
                 if (!child.isSubtotal || (root.children && root.children.length > 0 && !root.isSubtotal)) {
-                    this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices);
+                    // Формируем путь для дочернего узла: добавляем индекс или значение
+                    // Для уникальности используем индекс в массиве детей или levelSourceIndex
+                    const childPath = path ? `${path}-${child.levelSourceIndex || child.value}` : `${child.levelSourceIndex || child.value}`;
+                    this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices, expandedNodes, childPath);
                 }
             }
         }
@@ -252,14 +276,10 @@ export class MatrixDataviewHtmlFormatter {
             }
             
             if (value != null && value.value != null) {
-                // Определяем индекс источника значения
                 let sourceIndex = value.valueSourceIndex;
                 if (sourceIndex === undefined) {
-                    // Если не указан, используем ключ как индекс (предполагаем, что ключ = индекс меры)
                     sourceIndex = colIndex;
                 }
-                // Добавим отладку
-                //console.log(`colIndex=${colIndex}, sourceIndex=${sourceIndex}, value=${value.value}`);
                 const formattedValue = this.formatValue(value.value, sourceIndex, valueSources);
                 tdElement.appendChild(document.createTextNode(formattedValue));
             } 
@@ -286,7 +306,6 @@ export class MatrixDataviewHtmlFormatter {
         try {
             const formatString = valueSource.format || '0';
             
-            // Процентные форматы оставляем стандартному форматтеру (они работают корректно)
             if (formatString.includes('%')) {
                 const options: any = {
                     format: formatString,
@@ -298,14 +317,12 @@ export class MatrixDataviewHtmlFormatter {
                 return formatter.format(rawValue);
             }
             
-            // Определяем количество десятичных знаков из строки формата
             let decimalPlaces = 0;
             const decimalMatch = /\.(0+)/.exec(formatString);
             if (decimalMatch) {
                 decimalPlaces = decimalMatch[1].length;
             }
             
-            // Округляем значение
             let roundedValue: number;
             if (decimalPlaces > 0) {
                 const factor = Math.pow(10, decimalPlaces);
@@ -314,23 +331,19 @@ export class MatrixDataviewHtmlFormatter {
                 roundedValue = Math.round(rawValue);
             }
             
-            // Определяем, нужен ли разделитель тысяч (пробел в русской локали)
-            // Критерий: наличие запятой в строке формата (напр. "#,##0" или "#,##0.00")
             const needsThousandsSeparator = formatString.includes(',');
             
-            // Форматируем с учётом русской локали
             if (needsThousandsSeparator) {
                 return roundedValue.toLocaleString('ru-RU', {
                     minimumFractionDigits: decimalPlaces,
                     maximumFractionDigits: decimalPlaces,
-                    useGrouping: true // включает разделители тысяч (в ru-RU это пробелы)
+                    useGrouping: true
                 });
             } else {
-                // Без разделителей тысяч
                 return roundedValue.toLocaleString('ru-RU', {
                     minimumFractionDigits: decimalPlaces,
                     maximumFractionDigits: decimalPlaces,
-                    useGrouping: false // отключаем разделители
+                    useGrouping: false
                 });
             }
         } catch (error) {

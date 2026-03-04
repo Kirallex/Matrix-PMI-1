@@ -12,15 +12,23 @@ export declare class Visual implements IVisual {
     private exportButton;
     private isExporting;
     private pendingExport;
+    private expandedNodes;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
+    /**
+     * Рекурсивно строит множество путей для всех узлов, имеющих детей (раскрыты по умолчанию)
+     */
+    private buildExpandedNodes;
     private countRows;
+    private columnWidths;
     private renderVisualization;
+    /**
+ * Применяет сохранённые ширины к таблице
+ */
+    private applyColumnWidths;
     private handleExportClick;
     private requestMoreData;
     private handleDataSegment;
-    private handleResize;
-    destroy(): void;
     private exportDataView;
     private resetExportState;
     enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): powerbi.VisualObjectInstanceEnumerationObject;

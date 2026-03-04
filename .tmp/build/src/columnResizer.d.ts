@@ -5,7 +5,8 @@ export declare class ColumnResizer {
     private static startWidth;
     private static currentTable;
     private static resizeHandles;
-    static init(table: HTMLTableElement): void;
+    private static onResizeCallback;
+    static init(table: HTMLTableElement, onResize?: (colIndex: number, newWidth: number) => void): void;
     private static startResize;
     private static onMouseMove;
     private static onMouseUp;
