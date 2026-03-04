@@ -1,5 +1,6 @@
 import powerbi from "powerbi-visuals-api";
 import { valueFormatter } from "powerbi-visuals-utils-formattingutils";
+import { plusIcon, minusIcon } from './icons';
 
 export class MatrixDataviewHtmlFormatter {
     public static formatDataViewMatrix(
@@ -20,8 +21,9 @@ export class MatrixDataviewHtmlFormatter {
         }
         
         this.formatColumnHeaders(matrix.columns, matrix.rows, tbodyElement);
+        console.log('formatDataViewMatrix: rows.root.children length', matrix.rows?.root?.children?.length);
         this.formatRowNodes(matrix.rows.root, tbodyElement, matrix.columns, valueSources, columnSourceIndices, expandedNodes, '');
-        
+        console.log('formatRowNodes called');
         tableElement.appendChild(tbodyElement);
         htmlElement.appendChild(tableElement);
         return htmlElement;
@@ -171,82 +173,83 @@ export class MatrixDataviewHtmlFormatter {
         columns: powerbi.DataViewHierarchy,
         valueSources?: powerbi.DataViewMetadataColumn[],
         columnSourceIndices?: number[],
-        expandedNodes?: Set<string>,      // новый параметр
-        path: string = ''                 // путь к текущему узлу
+        expandedNodes?: Set<string>,
+        path: string = ''
     ) {
-        if (!(typeof root.level === 'undefined' || root.level === null)) {
+        if (!root) return;
+
+        const level = (root.level !== undefined && root.level !== null) ? root.level : -1; // для корня level = -1
+
+        // Создаём строку только для узлов с уровнем >= 0 (не для корня)
+        if (level >= 0) {
             const trElement = document.createElement('tr');
             const thElement = document.createElement('th');
             thElement.setAttribute('class', 'formatRowNodes');
             thElement.style.textAlign = 'left';
-            
-            // Строим отступы
+
+            // Отступы
             let headerText = "";
-            for (let level = 0; level < root.level; level++) {
+            for (let i = 0; i < level; i++) {
                 headerText += '\u00A0\u00A0\u00A0\u00A0';
             }
-            
-            // Формируем значение ячейки
+
+            // Значение ячейки
             let displayValue = "";
             if (root.isSubtotal) {
                 displayValue = "Totals";
                 headerText += displayValue;
             } else if (root.levelSourceIndex !== undefined) {
-                displayValue = root.levelSourceIndex.value !== undefined ? 
-                            root.levelSourceIndex.value : 
-                            (root.levelValues && root.levelValues[0] ? 
-                            root.levelValues[0].value : "");
+                displayValue = root.levelSourceIndex.value !== undefined ?
+                    root.levelSourceIndex.value :
+                    (root.levelValues && root.levelValues[0] ? root.levelValues[0].value : "");
                 headerText += displayValue;
             } else {
                 displayValue = root.value !== undefined ? root.value : "";
                 headerText += displayValue;
             }
-            
-            // Добавляем кнопку раскрытия, если есть дети
+
+            // Кнопка раскрытия, если есть дети
             const hasChildren = root.children && root.children.length > 0 && !root.isSubtotal;
             if (hasChildren) {
                 const expandBtn = document.createElement('span');
                 expandBtn.className = 'expandCollapseButton';
-                // Используем символы +/–; можно заменить на плюс/минус в кружке
-                expandBtn.textContent = expandedNodes?.has(path) ? '➖' : '➕';
                 expandBtn.dataset.path = path;
-                // Вставляем кнопку перед текстом
+                expandBtn.innerHTML = '';
+                expandBtn.insertAdjacentHTML('beforeend', expandedNodes?.has(path) ? minusIcon : plusIcon);
                 thElement.appendChild(expandBtn);
             }
-            
-            // Добавляем текст (с отступами)
+
             const textNode = document.createTextNode(headerText);
             thElement.appendChild(textNode);
-            
             trElement.appendChild(thElement);
-            
-            // Определяем класс строки
+
+            // Класс строки
             if (root.isSubtotal) {
                 trElement.classList.add('totalRow');
             } else {
                 trElement.classList.add('midRow');
             }
-            
-            // Добавляем ячейки данных, если есть
+
+            // Ячейки данных
             if (root.values && !(root.children && root.children.length > 0 && !root.isSubtotal)) {
                 this.addDataCells(trElement, root.values, columns, valueSources, columnSourceIndices);
             } else if (root.children && root.children.length > 0) {
-                // Если есть дети и узел не тотал, то для этой строки берём данные из дочернего тотала (если есть)
                 const subtotalChild = root.children.find(child => child.isSubtotal);
                 if (subtotalChild && subtotalChild.values) {
                     this.addDataCells(trElement, subtotalChild.values, columns, valueSources, columnSourceIndices);
                 }
             }
-            
+
             topElement.appendChild(trElement);
         }
-        
-        // Рекурсивно обрабатываем детей, только если узел раскрыт (или это не обычный узел с детьми)
-        if (root.children && !(root.isSubtotal) && expandedNodes?.has(path)) {
-            for (const child of root.children) {
-                if (!child.isSubtotal || (root.children && root.children.length > 0 && !root.isSubtotal)) {
-                    // Формируем путь для дочернего узла: добавляем индекс или значение
-                    // Для уникальности используем индекс в массиве детей или levelSourceIndex
+
+        // Обработка детей
+        if (root.children && root.children.length > 0 && !root.isSubtotal) {
+            // Для корня (level = -1) всегда показываем детей (первый уровень)
+            // Для остальных узлов – только если они раскрыты
+            const showChildren = (level === -1) || (expandedNodes?.has(path) === true);
+            if (showChildren) {
+                for (const child of root.children) {
                     const childPath = path ? `${path}-${child.levelSourceIndex || child.value}` : `${child.levelSourceIndex || child.value}`;
                     this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices, expandedNodes, childPath);
                 }

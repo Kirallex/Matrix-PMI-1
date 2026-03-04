@@ -49,18 +49,23 @@ export class Visual implements IVisual {
             return;
         }
 
-        this.settings = VisualSettings.parse<VisualSettings>(<any>options.dataViews[0]);
         this.currentDataView = options.dataViews[0];
-        console.log('dataView', this.currentDataView);
+        this.settings = VisualSettings.parse<VisualSettings>(<any>options.dataViews[0]);
+        console.log('update: dataView received, rows.root.children count', this.currentDataView.matrix?.rows?.root?.children?.length);
+        
+        //console.log('dataView', this.currentDataView);
+
+        // Сбрасываем состояние раскрытия — все узлы свернуты
+        this.expandedNodes.clear();
         
         const rowCount = this.countRows(this.currentDataView);
         console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
 
-        // Инициализируем expandedNodes при получении новых данных (раскрываем все узлы с детьми)
-        if (this.currentDataView?.matrix?.rows?.root) {
-            this.expandedNodes.clear();
-            this.buildExpandedNodes(this.currentDataView.matrix.rows.root);
-        }
+        //Инициализируем expandedNodes при получении новых данных (раскрываем все узлы с детьми)
+        // if (this.currentDataView?.matrix?.rows?.root) {
+        //     this.expandedNodes.clear();
+        //     this.buildExpandedNodes(this.currentDataView.matrix.rows.root);
+        // }
 
         if (this.isExporting) {
             this.handleDataSegment(this.currentDataView, rowCount);
@@ -138,6 +143,11 @@ export class Visual implements IVisual {
             // Получаем valueSources (нужны для форматирования)
             const valueSources = (this.currentDataView.matrix as any).valueSources;
 
+            console.log('renderVisualization: matrix exists', !!this.currentDataView?.matrix);
+            if (this.currentDataView?.matrix) {
+                console.log('root children count', this.currentDataView.matrix.rows?.root?.children?.length);
+            }
+
             // Создаём HTML-таблицу с учётом раскрытых узлов
             const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
                 this.currentDataView.matrix,
@@ -160,22 +170,40 @@ export class Visual implements IVisual {
             }
 
             // Добавляем обработчики кликов на кнопки раскрытия/свёртывания
-            const expandButtons = formattedMatrix.querySelectorAll('.expandCollapseButton');
-            expandButtons.forEach(btn => {
-                btn.addEventListener('click', (e) => {
+            // const expandButtons = formattedMatrix.querySelectorAll('.expandCollapseButton');
+
+            // expandButtons.forEach(btn => {
+            //     btn.addEventListener('click', (e) => {
+            //         e.stopPropagation();
+            //         const path = (e.target as HTMLElement).dataset.path;
+            //         if (path) {
+            //             // Переключаем состояние узла
+            //             if (this.expandedNodes.has(path)) {
+            //                 this.expandedNodes.delete(path);
+            //             } else {
+            //                 this.expandedNodes.add(path);
+            //             }
+            //             // Перерисовываем таблицу с новым состоянием (ширины сохранятся через applyColumnWidths)
+            //             this.renderVisualization(this.countRows(this.currentDataView));
+            //         }
+            //     });
+            // });
+
+            formattedMatrix.addEventListener('click', (e) => {
+                const target = e.target as HTMLElement;
+                const expandBtn = target.closest('.expandCollapseButton') as HTMLElement;
+                if (expandBtn) {
                     e.stopPropagation();
-                    const path = (e.target as HTMLElement).dataset.path;
+                    const path = expandBtn.dataset.path;
                     if (path) {
-                        // Переключаем состояние узла
                         if (this.expandedNodes.has(path)) {
                             this.expandedNodes.delete(path);
                         } else {
                             this.expandedNodes.add(path);
                         }
-                        // Перерисовываем таблицу с новым состоянием (ширины сохранятся через applyColumnWidths)
                         this.renderVisualization(this.countRows(this.currentDataView));
                     }
-                });
+                }
             });
 
             // Инициализируем ресайзеры для новой таблицы
