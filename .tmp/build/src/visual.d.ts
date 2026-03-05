@@ -13,18 +13,12 @@ export declare class Visual implements IVisual {
     private isExporting;
     private pendingExport;
     private expandedNodes;
+    private prevRowCount;
+    private columnWidths;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
-    /**
-     * Рекурсивно строит множество путей для всех узлов, имеющих детей (раскрыты по умолчанию)
-     */
-    private buildExpandedNodes;
     private countRows;
-    private columnWidths;
     private renderVisualization;
-    /**
- * Применяет сохранённые ширины к таблице
- */
     private applyColumnWidths;
     private handleExportClick;
     private requestMoreData;

@@ -25,6 +25,8 @@ export class Visual implements IVisual {
     private isExporting: boolean = false;
     private pendingExport: boolean = false;
     private expandedNodes: Set<string> = new Set(); // множество путей раскрытых узлов
+    private prevRowCount: number = 0; // для отслеживания изменения данных
+    private columnWidths: { [colIndex: number]: number } = {};
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
@@ -52,20 +54,17 @@ export class Visual implements IVisual {
         this.currentDataView = options.dataViews[0];
         this.settings = VisualSettings.parse<VisualSettings>(<any>options.dataViews[0]);
         console.log('update: dataView received, rows.root.children count', this.currentDataView.matrix?.rows?.root?.children?.length);
-        
-        //console.log('dataView', this.currentDataView);
 
-        // Сбрасываем состояние раскрытия — все узлы свернуты
-        this.expandedNodes.clear();
-        
         const rowCount = this.countRows(this.currentDataView);
         console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
 
-        //Инициализируем expandedNodes при получении новых данных (раскрываем все узлы с детьми)
-        // if (this.currentDataView?.matrix?.rows?.root) {
-        //     this.expandedNodes.clear();
-        //     this.buildExpandedNodes(this.currentDataView.matrix.rows.root);
-        // }
+        // Сбрасываем состояние только если это не Append (дозагрузка) и изменилось количество строк
+        if (options.operationKind !== VisualDataChangeOperationKind.Append && rowCount !== this.prevRowCount) {
+            console.log('!!! Clearing expandedNodes and columnWidths !!!');
+            this.expandedNodes.clear();
+            this.columnWidths = {};
+            this.prevRowCount = rowCount;
+        }
 
         if (this.isExporting) {
             this.handleDataSegment(this.currentDataView, rowCount);
@@ -79,24 +78,18 @@ export class Visual implements IVisual {
         }
     }
 
-    /**
-     * Рекурсивно строит множество путей для всех узлов, имеющих детей (раскрыты по умолчанию)
-     */
-    private buildExpandedNodes(node: any, path: string = ''): void {
-        if (node.children && node.children.length > 0 && !node.isSubtotal) {
-            // Текущий узел имеет детей – добавляем его путь
-            this.expandedNodes.add(path);
-            // Рекурсивно обходим детей
-            for (let i = 0; i < node.children.length; i++) {
-                const child = node.children[i];
-                // Формируем уникальный путь: используем levelSourceIndex или value или индекс
-                const childPath = path 
-                    ? `${path}-${child.levelSourceIndex ?? child.value ?? i}` 
-                    : `${child.levelSourceIndex ?? child.value ?? i}`;
-                this.buildExpandedNodes(child, childPath);
-            }
-        }
-    }
+    // private buildExpandedNodes(node: any, path: string = ''): void {
+    //     if (node.children && node.children.length > 0 && !node.isSubtotal) {
+    //         this.expandedNodes.add(path);
+    //         for (let i = 0; i < node.children.length; i++) {
+    //             const child = node.children[i];
+    //             const childPath = path 
+    //                 ? `${path}-${child.levelSourceIndex ?? child.value ?? i}` 
+    //                 : `${child.levelSourceIndex ?? child.value ?? i}`;
+    //             this.buildExpandedNodes(child, childPath);
+    //         }
+    //     }
+    // }
 
     private countRows(dataView: DataView): number {
         if (!dataView?.matrix?.rows?.root?.children) return 0;
@@ -111,21 +104,19 @@ export class Visual implements IVisual {
         return countChildren(dataView.matrix.rows.root.children);
     }
 
-    private columnWidths: { [colIndex: number]: number } = {};
-    
     private renderVisualization(cntRows: number): void {
         // Создаём кнопку экспорта, если её ещё нет
         if (!this.exportButton) {
             const buttonContainer = document.createElement('div');
             buttonContainer.className = 'export-button-container';
-            
+
             this.exportButton = document.createElement('button');
             this.exportButton.id = "exportBtn";
             this.exportButton.type = "button";
             this.exportButton.className = "export-button";
             this.exportButton.textContent = "Export Data";
             this.exportButton.addEventListener('click', () => this.handleExportClick(cntRows));
-            
+
             buttonContainer.appendChild(this.exportButton);
             this.target.prepend(buttonContainer);
         }
@@ -133,14 +124,12 @@ export class Visual implements IVisual {
         // Удаляем все старые контейнеры datagrid (включая пустые)
         const existingGrids = this.target.querySelectorAll('.datagrid');
         if (existingGrids.length > 0) {
-            // Очищаем ресайзеры перед удалением
             ColumnResizer.cleanup();
             HeightResizer.cleanup();
             existingGrids.forEach(grid => grid.remove());
         }
 
         if (this.currentDataView?.matrix) {
-            // Получаем valueSources (нужны для форматирования)
             const valueSources = (this.currentDataView.matrix as any).valueSources;
 
             console.log('renderVisualization: matrix exists', !!this.currentDataView?.matrix);
@@ -148,46 +137,22 @@ export class Visual implements IVisual {
                 console.log('root children count', this.currentDataView.matrix.rows?.root?.children?.length);
             }
 
-            // Создаём HTML-таблицу с учётом раскрытых узлов
             const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
                 this.currentDataView.matrix,
                 valueSources,
-                this.expandedNodes   // передаём Set с путями раскрытых узлов
+                this.expandedNodes
             );
 
-            // Применяем настройку скрытия пустых колонок
             if (this.settings?.hideEmptyCols?.hideColsLabel) {
                 this.applyHideEmptyColumnsSetting(formattedMatrix);
             }
 
-            // Добавляем таблицу в DOM
             this.target.appendChild(formattedMatrix);
 
-            // Применяем сохранённые ширины колонок
             const table = formattedMatrix.querySelector('table');
             if (table) {
                 this.applyColumnWidths(table);
             }
-
-            // Добавляем обработчики кликов на кнопки раскрытия/свёртывания
-            // const expandButtons = formattedMatrix.querySelectorAll('.expandCollapseButton');
-
-            // expandButtons.forEach(btn => {
-            //     btn.addEventListener('click', (e) => {
-            //         e.stopPropagation();
-            //         const path = (e.target as HTMLElement).dataset.path;
-            //         if (path) {
-            //             // Переключаем состояние узла
-            //             if (this.expandedNodes.has(path)) {
-            //                 this.expandedNodes.delete(path);
-            //             } else {
-            //                 this.expandedNodes.add(path);
-            //             }
-            //             // Перерисовываем таблицу с новым состоянием (ширины сохранятся через applyColumnWidths)
-            //             this.renderVisualization(this.countRows(this.currentDataView));
-            //         }
-            //     });
-            // });
 
             formattedMatrix.addEventListener('click', (e) => {
                 const target = e.target as HTMLElement;
@@ -206,9 +171,7 @@ export class Visual implements IVisual {
                 }
             });
 
-            // Инициализируем ресайзеры для новой таблицы
             if (table) {
-                // Передаём колбэк для сохранения ширины при изменении
                 ColumnResizer.init(table, (colIndex: number, newWidth: number) => {
                     this.columnWidths[colIndex] = newWidth;
                 });
@@ -217,10 +180,6 @@ export class Visual implements IVisual {
         }
     }
 
-
-    /**
- * Применяет сохранённые ширины к таблице
- */
     private applyColumnWidths(table: HTMLTableElement): void {
         for (let colIndex = 0; colIndex < table.rows[0]?.cells.length; colIndex++) {
             const width = this.columnWidths[colIndex];
