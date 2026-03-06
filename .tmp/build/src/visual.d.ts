@@ -15,6 +15,7 @@ export declare class Visual implements IVisual {
     private expandedNodes;
     private prevRowCount;
     private columnWidths;
+    private currentHeight;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
     private countRows;

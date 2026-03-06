@@ -23,14 +23,14 @@ export class ColumnResizer {
             resizer.style.userSelect = 'none';
             resizer.style.zIndex = '1';
             resizer.style.backgroundColor = 'transparent';
-            
+
             if (getComputedStyle(th).position === 'static') {
                 th.style.position = 'relative';
             }
-            
+
             th.appendChild(resizer);
             this.resizeHandles.push(resizer);
-            
+
             resizer.addEventListener('mousedown', (e: MouseEvent) => {
                 e.preventDefault();
                 this.startResize(e, th);
@@ -45,19 +45,20 @@ export class ColumnResizer {
         this.resizing = true;
         this.currentTh = th;
         this.startX = e.clientX;
-        this.startWidth = th.offsetWidth;
+        const computedStyle = getComputedStyle(th);
+        const minWidth = parseInt(computedStyle.minWidth) || 30;
+        this.startWidth = Math.max(th.offsetWidth, minWidth);
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
     }
 
     private static onMouseMove = (e: MouseEvent): void => {
         if (!this.resizing || !this.currentTh || !this.currentTable) return;
-        
+
         const diff = e.clientX - this.startX;
-        const newWidth = Math.max(30, this.startWidth + diff); // минимальная ширина 30px
+        const newWidth = Math.max(30, this.startWidth + diff);
         const cellIndex = this.currentTh.cellIndex;
-        
-        // Применяем ко всем ячейкам колонки
+
         for (let i = 0; i < this.currentTable.rows.length; i++) {
             const cell = this.currentTable.rows[i].cells[cellIndex];
             if (cell) {
@@ -67,7 +68,6 @@ export class ColumnResizer {
             }
         }
 
-        // Вызываем колбэк, если есть
         if (this.onResizeCallback) {
             this.onResizeCallback(cellIndex, newWidth);
         }

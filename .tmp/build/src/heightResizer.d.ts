@@ -5,7 +5,8 @@ export declare class HeightResizer {
     private static startY;
     private static startHeight;
     private static minHeight;
-    static init(container: HTMLElement): void;
+    private static onResizeCallback;
+    static init(container: HTMLElement, onResize?: (height: number) => void): void;
     private static onMouseDown;
     private static onMouseMove;
     private static onMouseUp;

@@ -6,17 +6,15 @@ export class HeightResizer {
     private static startY: number = 0;
     private static startHeight: number = 0;
     private static minHeight: number = 100;
+    private static onResizeCallback: ((height: number) => void) | null = null;
 
-    public static init(container: HTMLElement): void {
+    public static init(container: HTMLElement, onResize?: (height: number) => void): void {
         this.cleanup();
+        this.onResizeCallback = onResize || null;
         this.container = container;
-
-        // Убедимся, что контейнер позиционирован относительно
         if (getComputedStyle(container).position === 'static') {
             container.style.position = 'relative';
         }
-
-        // Создаём ручку
         this.handle = document.createElement('div');
         this.handle.style.cssText = `
             position: absolute;
@@ -25,14 +23,11 @@ export class HeightResizer {
             width: 100%;
             height: 8px;
             cursor: ns-resize;
-            background-color: transparent; /* замените на rgba(255,0,0,0.3) для отладки */
-            z-index: 1000; /* поднимаем повыше */
+            background-color: transparent;
+            z-index: 1000;
             pointer-events: auto;
         `;
         container.appendChild(this.handle);
-
-        console.log('HeightResizer: handle created', this.handle);
-
         this.handle.addEventListener('mousedown', this.onMouseDown);
         document.addEventListener('mousemove', this.onMouseMove);
         document.addEventListener('mouseup', this.onMouseUp);
@@ -46,7 +41,6 @@ export class HeightResizer {
         this.startHeight = this.container.offsetHeight;
         document.body.style.cursor = 'ns-resize';
         document.body.style.userSelect = 'none';
-        console.log('HeightResizer: mousedown', this.startY, this.startHeight);
     };
 
     private static onMouseMove = (e: MouseEvent): void => {
@@ -54,7 +48,9 @@ export class HeightResizer {
         const diff = e.clientY - this.startY;
         const newHeight = Math.max(this.minHeight, this.startHeight + diff);
         this.container.style.height = newHeight + 'px';
-        console.log('HeightResizer: mousemove', newHeight);
+        if (this.onResizeCallback) {
+            this.onResizeCallback(newHeight);
+        }
     };
 
     private static onMouseUp = (e: MouseEvent): void => {
@@ -62,7 +58,6 @@ export class HeightResizer {
             this.resizing = false;
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
-            console.log('HeightResizer: mouseup');
         }
     };
 
@@ -76,5 +71,6 @@ export class HeightResizer {
         document.removeEventListener('mouseup', this.onMouseUp);
         this.container = null;
         this.resizing = false;
+        this.onResizeCallback = null;
     }
 }

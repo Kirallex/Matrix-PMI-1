@@ -27,23 +27,12 @@ export class Visual implements IVisual {
     private expandedNodes: Set<string> = new Set(); // множество путей раскрытых узлов
     private prevRowCount: number = 0; // для отслеживания изменения данных
     private columnWidths: { [colIndex: number]: number } = {};
+    private currentHeight: number | null = null;
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
         this.host = options.host;
-        //window.addEventListener('resize', this.handleResize);
     }
-
-    // public destroy(): void {
-    //     window.removeEventListener('resize', this.handleResize);
-    // }
-
-    // private handleResize = (): void => {
-    //     if (this.currentDataView) {
-    //         const rowCount = this.countRows(this.currentDataView);
-    //         this.renderVisualization(rowCount);
-    //     }
-    // };
 
     public update(options: VisualUpdateOptions) {
         if (!options?.dataViews?.[0]) {
@@ -78,19 +67,6 @@ export class Visual implements IVisual {
         }
     }
 
-    // private buildExpandedNodes(node: any, path: string = ''): void {
-    //     if (node.children && node.children.length > 0 && !node.isSubtotal) {
-    //         this.expandedNodes.add(path);
-    //         for (let i = 0; i < node.children.length; i++) {
-    //             const child = node.children[i];
-    //             const childPath = path 
-    //                 ? `${path}-${child.levelSourceIndex ?? child.value ?? i}` 
-    //                 : `${child.levelSourceIndex ?? child.value ?? i}`;
-    //             this.buildExpandedNodes(child, childPath);
-    //         }
-    //     }
-    // }
-
     private countRows(dataView: DataView): number {
         if (!dataView?.matrix?.rows?.root?.children) return 0;
         const countChildren = (nodes: powerbi.DataViewMatrixNode[]): number => {
@@ -106,36 +82,31 @@ export class Visual implements IVisual {
 
     private renderVisualization(cntRows: number): void {
         // Создаём кнопку экспорта, если её ещё нет
-        if (!this.exportButton) {
-            const buttonContainer = document.createElement('div');
-            buttonContainer.className = 'export-button-container';
-
-            this.exportButton = document.createElement('button');
-            this.exportButton.id = "exportBtn";
-            this.exportButton.type = "button";
-            this.exportButton.className = "export-button";
-            this.exportButton.textContent = "Export Data";
-            this.exportButton.addEventListener('click', () => this.handleExportClick(cntRows));
-
-            buttonContainer.appendChild(this.exportButton);
-            this.target.prepend(buttonContainer);
-        }
-
-        // Удаляем все старые контейнеры datagrid (включая пустые)
-        const existingGrids = this.target.querySelectorAll('.datagrid');
-        if (existingGrids.length > 0) {
-            ColumnResizer.cleanup();
-            HeightResizer.cleanup();
-            existingGrids.forEach(grid => grid.remove());
-        }
-
-        if (this.currentDataView?.matrix) {
-            const valueSources = (this.currentDataView.matrix as any).valueSources;
-
-            console.log('renderVisualization: matrix exists', !!this.currentDataView?.matrix);
-            if (this.currentDataView?.matrix) {
-                console.log('root children count', this.currentDataView.matrix.rows?.root?.children?.length);
+            if (!this.exportButton) {
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'export-button-container';
+                
+                this.exportButton = document.createElement('button');
+                this.exportButton.id = "exportBtn";
+                this.exportButton.type = "button";
+                this.exportButton.className = "export-button";
+                this.exportButton.textContent = "Export Data";
+                this.exportButton.addEventListener('click', () => this.handleExportClick(cntRows));
+                
+                buttonContainer.appendChild(this.exportButton);
+                this.target.prepend(buttonContainer);
             }
+
+            // Удаляем все старые контейнеры datagrid (включая пустые)
+            const existingGrids = this.target.querySelectorAll('.datagrid');
+            if (existingGrids.length > 0) {
+                ColumnResizer.cleanup();
+                HeightResizer.cleanup();
+                existingGrids.forEach(grid => grid.remove());
+            }
+
+            if (this.currentDataView?.matrix) {
+            const valueSources = (this.currentDataView.matrix as any).valueSources;
 
             const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
                 this.currentDataView.matrix,
@@ -147,13 +118,29 @@ export class Visual implements IVisual {
                 this.applyHideEmptyColumnsSetting(formattedMatrix);
             }
 
+            // Применяем сохранённую высоту, если есть
+            if (this.currentHeight) {
+                formattedMatrix.style.height = this.currentHeight + 'px';
+            }
+
             this.target.appendChild(formattedMatrix);
 
             const table = formattedMatrix.querySelector('table');
             if (table) {
+                // Если нет сохранённых ширин, инициализируем их текущими размерами
+                if (Object.keys(this.columnWidths).length === 0) {
+                    for (let colIndex = 0; colIndex < table.rows[0]?.cells.length; colIndex++) {
+                        const cell = table.rows[0].cells[colIndex];
+                        if (cell) {
+                            const width = cell.offsetWidth;
+                            this.columnWidths[colIndex] = width;
+                        }
+                    }
+                }
                 this.applyColumnWidths(table);
             }
 
+            // Обработчик кликов на кнопки раскрытия (без изменений)
             formattedMatrix.addEventListener('click', (e) => {
                 const target = e.target as HTMLElement;
                 const expandBtn = target.closest('.expandCollapseButton') as HTMLElement;
@@ -171,12 +158,15 @@ export class Visual implements IVisual {
                 }
             });
 
+            // Инициализируем ресайзеры
             if (table) {
                 ColumnResizer.init(table, (colIndex: number, newWidth: number) => {
                     this.columnWidths[colIndex] = newWidth;
                 });
             }
-            HeightResizer.init(formattedMatrix);
+            HeightResizer.init(formattedMatrix, (newHeight: number) => {
+                this.currentHeight = newHeight;
+            });
         }
     }
 
