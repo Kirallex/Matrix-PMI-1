@@ -105,6 +105,33 @@
                     }
                 }
             }
+        },
+        "grid": {
+            "displayName": "Grid",
+            "properties": {
+                "horizontalColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "horizontalWidth": { "type": { "numeric": true } },
+                "verticalColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "verticalWidth": { "type": { "numeric": true } },
+                "borderSection": {
+                    "type": {
+                        "enumeration": [
+                            { "value": "all", "displayName": "All" },
+                            { "value": "columnHeader", "displayName": "Column Header" },
+                            { "value": "rowHeader", "displayName": "Row Header" },
+                            { "value": "values", "displayName": "Values Section" }
+                        ]
+                    }
+                },
+                "borderPositionTop": { "type": { "bool": true } },
+                "borderPositionBottom": { "type": { "bool": true } },
+                "borderPositionLeft": { "type": { "bool": true } },
+                "borderPositionRight": { "type": { "bool": true } },
+                "borderColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "borderWidth": { "type": { "numeric": true } },
+                "rowPadding": { "type": { "numeric": true } },
+                "globalFontSize": { "type": { "numeric": true } }
+            }
         }
     },
     "subtotals": {
@@ -146,6 +173,7 @@
             }
         }
     },
+    
     "privileges": [
                 {
             "name": "ExportContent",

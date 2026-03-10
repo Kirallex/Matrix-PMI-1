@@ -1,13 +1,68 @@
-import { dataViewObjectsParser } from "powerbi-visuals-utils-dataviewutils";
-import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
-export declare class VisualSettings extends DataViewObjectsParser {
-    subTotals: Subtotals;
-    hideEmptyCols: HideEmptyCols;
+import { formattingSettings } from "powerbi-visuals-utils-formattingmodel";
+import FormattingSettingsCard = formattingSettings.SimpleCard;
+import FormattingSettingsCompositeCard = formattingSettings.CompositeCard;
+import FormattingSettingsSlice = formattingSettings.Slice;
+import FormattingSettingsModel = formattingSettings.Model;
+declare class SubtotalsCard extends FormattingSettingsCard {
+    rowSubtotals: formattingSettings.ToggleSwitch;
+    columnSubtotals: formattingSettings.ToggleSwitch;
+    name: string;
+    displayName: string;
+    slices: FormattingSettingsSlice[];
 }
-export declare class Subtotals {
-    rowSubtotals: boolean;
-    columnSubtotals: boolean;
+declare class HideEmptyColsCard extends FormattingSettingsCard {
+    hideColsLabel: formattingSettings.ToggleSwitch;
+    name: string;
+    displayName: string;
+    slices: FormattingSettingsSlice[];
 }
-export declare class HideEmptyCols {
-    hideColsLabel: boolean;
+declare class HorizontalGridlinesGroup extends FormattingSettingsCard {
+    color: formattingSettings.ColorPicker;
+    width: formattingSettings.NumUpDown;
+    name: string;
+    displayName: string;
+    slices: FormattingSettingsSlice[];
 }
+declare class VerticalGridlinesGroup extends FormattingSettingsCard {
+    color: formattingSettings.ColorPicker;
+    width: formattingSettings.NumUpDown;
+    name: string;
+    displayName: string;
+    slices: FormattingSettingsSlice[];
+}
+declare class BorderGroup extends FormattingSettingsCard {
+    section: formattingSettings.ItemDropdown;
+    positionTop: formattingSettings.ToggleSwitch;
+    positionBottom: formattingSettings.ToggleSwitch;
+    positionLeft: formattingSettings.ToggleSwitch;
+    positionRight: formattingSettings.ToggleSwitch;
+    color: formattingSettings.ColorPicker;
+    width: formattingSettings.NumUpDown;
+    name: string;
+    displayName: string;
+    slices: FormattingSettingsSlice[];
+}
+declare class OptionsGroup extends FormattingSettingsCard {
+    rowPadding: formattingSettings.NumUpDown;
+    globalFontSize: formattingSettings.NumUpDown;
+    name: string;
+    displayName: string;
+    slices: FormattingSettingsSlice[];
+}
+declare class GridCard extends FormattingSettingsCompositeCard {
+    horizontalGroup: HorizontalGridlinesGroup;
+    verticalGroup: VerticalGridlinesGroup;
+    borderGroup: BorderGroup;
+    optionsGroup: OptionsGroup;
+    groups: FormattingSettingsCard[];
+    name: string;
+    displayName: string;
+    constructor();
+}
+export declare class VisualSettings extends FormattingSettingsModel {
+    subTotals: SubtotalsCard;
+    hideEmptyCols: HideEmptyColsCard;
+    grid: GridCard;
+    constructor();
+}
+export {};

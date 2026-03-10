@@ -13,7 +13,7 @@
 
     table {
         box-sizing: border-box;
-        height: auto;               // можно убрать, если мешает
+        height: auto;
         width: auto;
         border-collapse: collapse;
         border: 1px solid #E1E1E1;
@@ -79,7 +79,7 @@
             background-color: #E8ECEF;
             font-size: 20px;
             padding: 8px 5px;
-            height: auto;        // не фиксируем для верхних заголовков
+            height: auto;
             min-height: auto;
         }
     }
@@ -115,13 +115,13 @@
             background-color: #66B0C2 !important;
             color: #FFFFFF !important;
             font-weight: bold !important;
-            border-color: #5A9BAD !important;
+            border-color: #5A9BAD; // убрали !important
         }
 
         th.formatRowNodes {
             display: flex;
             align-items: center;
-            border-right: 2px solid #5A9BAD !important;
+            border-right: 2px solid #5A9BAD; // убрали !important
         }
     }
 
@@ -129,7 +129,7 @@
         background-color: #66B0C2 !important;
         color: #FFFFFF !important;
         font-weight: bold !important;
-        border-color: #5A9BAD !important;
+        border-color: #5A9BAD; // убрали !important
         
         &.formatColumnNodes {
             background-color: #66B0C2 !important;

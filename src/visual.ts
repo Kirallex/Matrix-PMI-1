@@ -11,27 +11,32 @@ import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import DataView = powerbi.DataView;
 import Host = powerbi.extensibility.visual.IVisualHost;
 import { VisualSettings } from "./settings";
-import { ObjectEnumerationBuilder } from "./objectEnumerationBuilder";
-import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
 import { MatrixEmptyColumnsHider } from "./hideEmptyCols";
 import VisualDataChangeOperationKind = powerbi.VisualDataChangeOperationKind;
+import { applyGridSettings } from "./gridSettings";
+import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
 
 export class Visual implements IVisual {
     private target: HTMLElement;
     private settings: VisualSettings;
     private host: Host;
     private currentDataView: DataView;
+    private lastDataView: DataView | null = null;
     private exportButton: HTMLButtonElement | null = null;
     private isExporting: boolean = false;
     private pendingExport: boolean = false;
-    private expandedNodes: Set<string> = new Set(); // множество путей раскрытых узлов
-    private prevRowCount: number = 0; // для отслеживания изменения данных
+    private expandedNodes: Set<string> = new Set();
+    private prevRowCount: number = 0;
     private columnWidths: { [colIndex: number]: number } = {};
     private currentHeight: number | null = null;
+    private formattingSettingsService: FormattingSettingsService;
+    private updateTimeout: any = null;
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
         this.host = options.host;
+        this.formattingSettingsService = new FormattingSettingsService();
+        this.settings = new VisualSettings();
     }
 
     public update(options: VisualUpdateOptions) {
@@ -40,14 +45,17 @@ export class Visual implements IVisual {
             return;
         }
 
+        this.lastDataView = options.dataViews[0];
         this.currentDataView = options.dataViews[0];
-        this.settings = VisualSettings.parse<VisualSettings>(<any>options.dataViews[0]);
-        console.log('update: dataView received, rows.root.children count', this.currentDataView.matrix?.rows?.root?.children?.length);
+        this.settings = this.formattingSettingsService.populateFormattingSettingsModel(
+            VisualSettings,
+            options.dataViews[0]
+        ) as VisualSettings;
+        console.log('this.settings.grid:', this.settings.grid);
 
         const rowCount = this.countRows(this.currentDataView);
         console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
 
-        // Сбрасываем состояние только если это не Append (дозагрузка) и изменилось количество строк
         if (options.operationKind !== VisualDataChangeOperationKind.Append && rowCount !== this.prevRowCount) {
             console.log('!!! Clearing expandedNodes and columnWidths !!!');
             this.expandedNodes.clear();
@@ -67,6 +75,10 @@ export class Visual implements IVisual {
         }
     }
 
+    public getFormattingModel(): powerbi.visuals.FormattingModel {
+        return this.formattingSettingsService.buildFormattingModel(this.settings);
+    }
+
     private countRows(dataView: DataView): number {
         if (!dataView?.matrix?.rows?.root?.children) return 0;
         const countChildren = (nodes: powerbi.DataViewMatrixNode[]): number => {
@@ -81,31 +93,29 @@ export class Visual implements IVisual {
     }
 
     private renderVisualization(cntRows: number): void {
-        // Создаём кнопку экспорта, если её ещё нет
-            if (!this.exportButton) {
-                const buttonContainer = document.createElement('div');
-                buttonContainer.className = 'export-button-container';
-                
-                this.exportButton = document.createElement('button');
-                this.exportButton.id = "exportBtn";
-                this.exportButton.type = "button";
-                this.exportButton.className = "export-button";
-                this.exportButton.textContent = "Export Data";
-                this.exportButton.addEventListener('click', () => this.handleExportClick(cntRows));
-                
-                buttonContainer.appendChild(this.exportButton);
-                this.target.prepend(buttonContainer);
-            }
+        if (!this.exportButton) {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'export-button-container';
+            
+            this.exportButton = document.createElement('button');
+            this.exportButton.id = "exportBtn";
+            this.exportButton.type = "button";
+            this.exportButton.className = "export-button";
+            this.exportButton.textContent = "Export Data";
+            this.exportButton.addEventListener('click', () => this.handleExportClick(cntRows));
+            
+            buttonContainer.appendChild(this.exportButton);
+            this.target.prepend(buttonContainer);
+        }
 
-            // Удаляем все старые контейнеры datagrid (включая пустые)
-            const existingGrids = this.target.querySelectorAll('.datagrid');
-            if (existingGrids.length > 0) {
-                ColumnResizer.cleanup();
-                HeightResizer.cleanup();
-                existingGrids.forEach(grid => grid.remove());
-            }
+        const existingGrids = this.target.querySelectorAll('.datagrid');
+        if (existingGrids.length > 0) {
+            ColumnResizer.cleanup();
+            HeightResizer.cleanup();
+            existingGrids.forEach(grid => grid.remove());
+        }
 
-            if (this.currentDataView?.matrix) {
+        if (this.currentDataView?.matrix) {
             const valueSources = (this.currentDataView.matrix as any).valueSources;
 
             const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
@@ -114,20 +124,19 @@ export class Visual implements IVisual {
                 this.expandedNodes
             );
 
-            if (this.settings?.hideEmptyCols?.hideColsLabel) {
+            if (this.settings?.hideEmptyCols?.hideColsLabel?.value) {
                 this.applyHideEmptyColumnsSetting(formattedMatrix);
             }
 
-            // Применяем сохранённую высоту, если есть
             if (this.currentHeight) {
                 formattedMatrix.style.height = this.currentHeight + 'px';
             }
 
+            applyGridSettings(formattedMatrix, this.settings);
             this.target.appendChild(formattedMatrix);
-
+            
             const table = formattedMatrix.querySelector('table');
             if (table) {
-                // Если нет сохранённых ширин, инициализируем их текущими размерами
                 if (Object.keys(this.columnWidths).length === 0) {
                     for (let colIndex = 0; colIndex < table.rows[0]?.cells.length; colIndex++) {
                         const cell = table.rows[0].cells[colIndex];
@@ -140,7 +149,6 @@ export class Visual implements IVisual {
                 this.applyColumnWidths(table);
             }
 
-            // Обработчик кликов на кнопки раскрытия (без изменений)
             formattedMatrix.addEventListener('click', (e) => {
                 const target = e.target as HTMLElement;
                 const expandBtn = target.closest('.expandCollapseButton') as HTMLElement;
@@ -158,7 +166,6 @@ export class Visual implements IVisual {
                 }
             });
 
-            // Инициализируем ресайзеры
             if (table) {
                 ColumnResizer.init(table, (colIndex: number, newWidth: number) => {
                     this.columnWidths[colIndex] = newWidth;
@@ -261,34 +268,6 @@ export class Visual implements IVisual {
             this.exportButton.disabled = false;
             this.exportButton.textContent = "Export Data";
         }
-    }
-
-    public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): powerbi.VisualObjectInstanceEnumerationObject {
-        const enumeration = new ObjectEnumerationBuilder();
-        switch (options.objectName) {
-            case "subTotals":
-                enumeration.pushInstance({
-                    objectName: "subTotals",
-                    displayName: "Subtotals Settings",
-                    selector: null,
-                    properties: {
-                        rowSubtotals: this.settings.subTotals.rowSubtotals,
-                        columnSubtotals: this.settings.subTotals.columnSubtotals
-                    }
-                });
-                break;
-            case "hideEmptyCols":
-                enumeration.pushInstance({
-                    objectName: "hideEmptyCols",
-                    displayName: "Hide Empty Columns",
-                    selector: null,
-                    properties: {
-                        hideColsLabel: this.settings.hideEmptyCols.hideColsLabel
-                    }
-                });
-                break;
-        }
-        return enumeration.complete();
     }
 
     private applyHideEmptyColumnsSetting(formattedMatrix: HTMLElement): void {

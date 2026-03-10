@@ -3,12 +3,12 @@ import powerbi from "powerbi-visuals-api";
 import IVisual = powerbi.extensibility.visual.IVisual;
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
-import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
 export declare class Visual implements IVisual {
     private target;
     private settings;
     private host;
     private currentDataView;
+    private lastDataView;
     private exportButton;
     private isExporting;
     private pendingExport;
@@ -16,8 +16,11 @@ export declare class Visual implements IVisual {
     private prevRowCount;
     private columnWidths;
     private currentHeight;
+    private formattingSettingsService;
+    private updateTimeout;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
+    getFormattingModel(): powerbi.visuals.FormattingModel;
     private countRows;
     private renderVisualization;
     private applyColumnWidths;
@@ -26,7 +29,6 @@ export declare class Visual implements IVisual {
     private handleDataSegment;
     private exportDataView;
     private resetExportState;
-    enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): powerbi.VisualObjectInstanceEnumerationObject;
     private applyHideEmptyColumnsSetting;
     private clearDisplay;
 }
