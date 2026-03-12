@@ -6,7 +6,7 @@ export class MatrixDataviewHtmlFormatter {
     public static formatDataViewMatrix(
         matrix: powerbi.DataViewMatrix,
         valueSources?: powerbi.DataViewMetadataColumn[],
-        expandedNodes?: Set<string> // добавляем параметр
+        expandedNodes?: Set<string>
     ): HTMLElement {
         const htmlElement = document.createElement('div');
         htmlElement.classList.add('datagrid');
@@ -21,9 +21,16 @@ export class MatrixDataviewHtmlFormatter {
         }
         
         this.formatColumnHeaders(matrix.columns, matrix.rows, tbodyElement);
-        console.log('formatDataViewMatrix: rows.root.children length', matrix.rows?.root?.children?.length);
-        this.formatRowNodes(matrix.rows.root, tbodyElement, matrix.columns, valueSources, columnSourceIndices, expandedNodes, '');
-        console.log('formatRowNodes called');
+        this.formatRowNodes(
+            matrix.rows.root,
+            tbodyElement,
+            matrix.columns,
+            valueSources,
+            columnSourceIndices,
+            expandedNodes,
+            ''
+        );
+        
         tableElement.appendChild(tbodyElement);
         htmlElement.appendChild(tableElement);
         return htmlElement;
@@ -180,9 +187,10 @@ export class MatrixDataviewHtmlFormatter {
 
         const level = (root.level !== undefined && root.level !== null) ? root.level : -1; // для корня level = -1
 
-        // Создаём строку только для узлов с уровнем >= 0 (не для корня)
         if (level >= 0) {
             const trElement = document.createElement('tr');
+            trElement.setAttribute('data-level', level.toString()); // добавляем атрибут
+
             const thElement = document.createElement('th');
             thElement.setAttribute('class', 'formatRowNodes');
             thElement.style.textAlign = 'left';
@@ -245,8 +253,6 @@ export class MatrixDataviewHtmlFormatter {
 
         // Обработка детей
         if (root.children && root.children.length > 0 && !root.isSubtotal) {
-            // Для корня (level = -1) всегда показываем детей (первый уровень)
-            // Для остальных узлов – только если они раскрыты
             const showChildren = (level === -1) || (expandedNodes?.has(path) === true);
             if (showChildren) {
                 for (const child of root.children) {

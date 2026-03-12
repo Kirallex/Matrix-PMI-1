@@ -30,5 +30,6 @@ export declare class Visual implements IVisual {
     private exportDataView;
     private resetExportState;
     private applyHideEmptyColumnsSetting;
+    private applyGrandTotalSetting;
     private clearDisplay;
 }

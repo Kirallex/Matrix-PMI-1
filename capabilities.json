@@ -92,6 +92,13 @@
                     "type": {
                         "bool": true
                     }
+                },
+                "grandTotal": {
+                    "type": {
+                        "bool": true
+                    },
+                    "displayName": "Grand total",
+                    "description": "Show grand total row"
                 }
             }
         },

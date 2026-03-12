@@ -17,9 +17,14 @@ class SubtotalsCard extends FormattingSettingsCard {
         displayName: "Column subtotals",
         value: true
     });
+    public grandTotal = new formattingSettings.ToggleSwitch({
+        name: "grandTotal",
+        displayName: "Grand total",
+        value: true
+    });
     public name: string = "subTotals";
     public displayName: string = "Subtotals";
-    public slices: FormattingSettingsSlice[] = [this.rowSubtotals, this.columnSubtotals];
+    public slices: FormattingSettingsSlice[] = [this.rowSubtotals, this.columnSubtotals, this.grandTotal];
 }
 
 // --- Карточка Hide Empty Columns ---
