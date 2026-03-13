@@ -9,13 +9,13 @@
   height: 400px;
   max-height: none;
   position: relative;
-  /* Общие стили для всех ячеек */
+  /* Закрепляем thead сверху как единое целое */
   /* Все заголовки строк (первый столбец) – закрепляем слева */
-  /* Уточнение фона для разных типов заголовков строк */
-  /* Верхние заголовки (строки с классом topRow) – закрепляем сверху */
-  /* Верхний заголовок первого столбца – должен быть выше всех */
-  /* Итоговая строка (закреплена снизу) */
+  /* Верхний заголовок первого столбца (внутри thead) – подчиняется z-index thead, но уточняем фон */
+  /* Итоговая строка (закреплена снизу) – выше данных, но ниже thead */
+  /* Ячейки данных – обычный поток */
   /* Унифицированная высота для всех ячеек данных и заголовков строк */
+  /* Стили для заголовков столбцов (внутри thead) */
 }
 .datagrid table {
   box-sizing: border-box;
@@ -24,13 +24,11 @@
   border-collapse: collapse;
   border: 1px solid #E1E1E1;
 }
-.datagrid th,
-.datagrid td {
-  text-align: left;
-  vertical-align: top;
-  box-sizing: border-box;
-  position: relative;
-  border: 1px solid #E1E1E1;
+.datagrid thead {
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+  background-color: inherit;
 }
 .datagrid th.rowsHeader,
 .datagrid th.formatRowNodes,
@@ -38,38 +36,25 @@
   position: sticky !important;
   left: 0 !important;
   z-index: 1000 !important;
+  /* ниже thead */
   background-color: inherit;
 }
-.datagrid th.rowsHeader {
-  background-color: #F8F9FA;
-  font-weight: 600;
-  color: #1E2323;
-  border-right: 2px solid #D0D5D8;
-  min-width: 150px;
-}
-.datagrid th.formatRowNodes {
-  background-color: #FFFFFF;
-  font-weight: 600;
-  color: #1E2323;
-  border-right: 2px solid #D0D5D8;
-  display: flex;
-  align-items: center;
-}
-.datagrid tr.topRow {
-  position: sticky;
-  top: 0;
-  z-index: 2000;
-  /* выше первого столбца */
-}
-.datagrid tr.topRow th.rowsHeader {
+.datagrid thead th.rowsHeader {
   background-color: #F0F2F4;
-  z-index: 3000 !important;
+  z-index: 2000 !important;
+  /* должен быть на уровне thead, но не выше остальных ячеек thead */
 }
 .datagrid tbody tr.totalRow:last-child {
   position: sticky !important;
   bottom: 0 !important;
-  z-index: 500 !important;
+  z-index: 1500 !important;
   background-color: #66B0C2;
+}
+.datagrid td {
+  background-color: #FFFFFF;
+  font-size: 20px;
+  color: #1E2323;
+  z-index: 1;
 }
 .datagrid td,
 .datagrid th.formatRowNodes,
@@ -81,12 +66,6 @@
   max-height: 42px;
   padding: 10px 5px 11px 5px;
   line-height: 20px;
-}
-.datagrid td {
-  background-color: #FFFFFF;
-  font-size: 20px;
-  color: #1E2323;
-  z-index: 1;
 }
 .datagrid .formatColumnNodes {
   background-color: #F8F9FA;

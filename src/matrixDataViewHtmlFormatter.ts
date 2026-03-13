@@ -11,16 +11,19 @@ export class MatrixDataviewHtmlFormatter {
         const htmlElement = document.createElement('div');
         htmlElement.classList.add('datagrid');
         const tableElement = document.createElement('table');
+        const theadElement = document.createElement('thead');
         const tbodyElement = document.createElement('tbody');
-        
+
         // Создаём массив соответствия индексов колонок индексам источников
         let columnSourceIndices: number[] = [];
         if (matrix.columns?.root) {
             const leafNodes = this.collectLeafNodesInOrder(matrix.columns.root);
             columnSourceIndices = leafNodes.map(node => node.levelSourceIndex !== undefined ? node.levelSourceIndex : -1);
         }
-        
-        this.formatColumnHeaders(matrix.columns, matrix.rows, tbodyElement);
+
+        // Заголовки в thead
+        this.formatColumnHeaders(matrix.columns, matrix.rows, theadElement);
+        // Данные в tbody
         this.formatRowNodes(
             matrix.rows.root,
             tbodyElement,
@@ -30,16 +33,21 @@ export class MatrixDataviewHtmlFormatter {
             expandedNodes,
             ''
         );
-        
+
+        tableElement.appendChild(theadElement);
         tableElement.appendChild(tbodyElement);
         htmlElement.appendChild(tableElement);
         return htmlElement;
     }
 
-    private static formatColumnHeaders(columns: powerbi.DataViewHierarchy, rows: powerbi.DataViewHierarchy, tbodyElement: HTMLTableSectionElement): void {
+    private static formatColumnHeaders(
+        columns: powerbi.DataViewHierarchy,
+        rows: powerbi.DataViewHierarchy,
+        theadElement: HTMLElement
+    ): void {
         if (!columns?.root?.children) return;
 
-        const columnLevels = columns.levels.filter(level => 
+        const columnLevels = columns.levels.filter(level =>
             !level.sources.some(source => source.isMeasure)
         );
 
@@ -47,25 +55,24 @@ export class MatrixDataviewHtmlFormatter {
             const row = document.createElement('tr');
             let rowLevel = columnLevels.length - levelIndex;
             row.classList.add('topRow');
-            row.setAttribute('data-level',  rowLevel.toString());
+            row.setAttribute('data-level', rowLevel.toString());
             let childrenNum: number;
             this.addRowHeader(row, columnLevels[levelIndex]?.sources[0]?.displayName || '');
             this.formatColumnLevel(columns.root, levelIndex, row);
             childrenNum = row.children.length > 0 ? row.children.length - 1 : 0;
             row.setAttribute('data-children-num', childrenNum.toString());
-            tbodyElement.appendChild(row);
+            theadElement.appendChild(row);
         }
 
-        this.createMeasuresRow(columns, rows, tbodyElement, 0);
+        this.createMeasuresRow(columns, rows, theadElement, 0);
     }
 
     private static formatColumnLevel(
-            rootNode: powerbi.DataViewMatrixNode, 
-            targetLevel: number, 
-            row: HTMLTableRowElement, 
-            currentLevel: number = 0
-        ): void {
-        
+        rootNode: powerbi.DataViewMatrixNode,
+        targetLevel: number,
+        row: HTMLTableRowElement,
+        currentLevel: number = 0
+    ): void {
         if (!rootNode.children) return;
 
         for (const child of rootNode.children) {
@@ -91,17 +98,22 @@ export class MatrixDataviewHtmlFormatter {
         return count;
     }
 
-    private static createMeasuresRow(columns: powerbi.DataViewHierarchy, rows: powerbi.DataViewHierarchy, tbodyElement: HTMLTableSectionElement, measLevel: number): void {
+    private static createMeasuresRow(
+        columns: powerbi.DataViewHierarchy,
+        rows: powerbi.DataViewHierarchy,
+        theadElement: HTMLElement,
+        measLevel: number
+    ): void {
         const measuresRow = document.createElement('tr');
         measuresRow.classList.add('topRow');
         measuresRow.setAttribute('data-level', measLevel.toString());
-        
+
         const rowHeaderName = rows?.levels[0]?.sources[0]?.displayName || '';
         this.addRowHeader(measuresRow, rowHeaderName);
-        
+
         const measures = this.getAllMeasures(columns);
         const leafNodes = this.collectLeafNodesInOrder(columns.root);
-        
+
         let counterOfHeaders: number = 0;
         for (const leafNode of leafNodes) {
             const measureIndex = leafNode.levelSourceIndex || 0;
@@ -113,7 +125,7 @@ export class MatrixDataviewHtmlFormatter {
             counterOfHeaders++;
         }
         measuresRow.setAttribute('data-children-num', counterOfHeaders.toString());
-        tbodyElement.appendChild(measuresRow);
+        theadElement.appendChild(measuresRow);
     }
 
     private static collectLeafNodesInOrder(node: powerbi.DataViewMatrixNode): powerbi.DataViewMatrixNode[] {
@@ -133,14 +145,14 @@ export class MatrixDataviewHtmlFormatter {
     }
 
     private static isLeafNodeSubtotal(node: powerbi.DataViewMatrixNode): boolean {
-        return node.isSubtotal || 
-               (node.levelValues && node.levelValues.some(lv => lv.value === 'Total')) ||
-               node.value === 'Total';
+        return node.isSubtotal ||
+            (node.levelValues && node.levelValues.some(lv => lv.value === 'Total')) ||
+            node.value === 'Total';
     }
 
     private static getAllMeasures(columns: powerbi.DataViewHierarchy): string[] {
         const measures: string[] = [];
-        const measuresLevel = columns.levels.find(level => 
+        const measuresLevel = columns.levels.find(level =>
             level.sources.some(source => source.isMeasure)
         );
         if (measuresLevel) {
@@ -185,11 +197,11 @@ export class MatrixDataviewHtmlFormatter {
     ) {
         if (!root) return;
 
-        const level = (root.level !== undefined && root.level !== null) ? root.level : -1; // для корня level = -1
+        const level = (root.level !== undefined && root.level !== null) ? root.level : -1;
 
         if (level >= 0) {
             const trElement = document.createElement('tr');
-            trElement.setAttribute('data-level', level.toString()); // добавляем атрибут
+            trElement.setAttribute('data-level', level.toString());
 
             const thElement = document.createElement('th');
             thElement.setAttribute('class', 'formatRowNodes');
@@ -231,7 +243,6 @@ export class MatrixDataviewHtmlFormatter {
             thElement.appendChild(textNode);
             trElement.appendChild(thElement);
 
-            // Класс строки
             if (root.isSubtotal) {
                 trElement.classList.add('totalRow');
             } else {
@@ -272,18 +283,18 @@ export class MatrixDataviewHtmlFormatter {
     ): void {
         const valueKeys = Object.keys(values).sort((a, b) => parseInt(a) - parseInt(b));
         const columnTotalInfo = this.getColumnTotalInfo(columns);
-        
+
         for (let i = 0; i < valueKeys.length; i++) {
             const key = valueKeys[i];
             const value = values[key];
             const tdElement = document.createElement('td');
             tdElement.setAttribute('id', key);
             const colIndex = parseInt(key);
-            
+
             if (columnTotalInfo[colIndex]) {
                 tdElement.classList.add('totalColumn');
             }
-            
+
             if (value != null && value.value != null) {
                 let sourceIndex = value.valueSourceIndex;
                 if (sourceIndex === undefined) {
@@ -291,7 +302,7 @@ export class MatrixDataviewHtmlFormatter {
                 }
                 const formattedValue = this.formatValue(value.value, sourceIndex, valueSources);
                 tdElement.appendChild(document.createTextNode(formattedValue));
-            } 
+            }
             trElement.appendChild(tdElement);
         }
     }
@@ -311,10 +322,10 @@ export class MatrixDataviewHtmlFormatter {
             return rawValue?.toLocaleString('ru-RU') || '';
         }
         const valueSource = valueSources[valueSourceIndex];
-        
+
         try {
             const formatString = valueSource.format || '0';
-            
+
             if (formatString.includes('%')) {
                 const options: any = {
                     format: formatString,
@@ -325,13 +336,13 @@ export class MatrixDataviewHtmlFormatter {
                 const formatter = valueFormatter.create(options);
                 return formatter.format(rawValue);
             }
-            
+
             let decimalPlaces = 0;
             const decimalMatch = /\.(0+)/.exec(formatString);
             if (decimalMatch) {
                 decimalPlaces = decimalMatch[1].length;
             }
-            
+
             let roundedValue: number;
             if (decimalPlaces > 0) {
                 const factor = Math.pow(10, decimalPlaces);
@@ -339,9 +350,9 @@ export class MatrixDataviewHtmlFormatter {
             } else {
                 roundedValue = Math.round(rawValue);
             }
-            
+
             const needsThousandsSeparator = formatString.includes(',');
-            
+
             if (needsThousandsSeparator) {
                 return roundedValue.toLocaleString('ru-RU', {
                     minimumFractionDigits: decimalPlaces,

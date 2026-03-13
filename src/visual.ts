@@ -128,7 +128,6 @@ export class Visual implements IVisual {
                 this.applyHideEmptyColumnsSetting(formattedMatrix);
             }
 
-            // Применяем настройку гранд-тотала
             this.applyGrandTotalSetting(formattedMatrix);
             
             if (this.currentHeight) {
@@ -278,11 +277,9 @@ export class Visual implements IVisual {
         hider.hideEmptyColsMethod(formattedMatrix);
     }
 
-    // Новая функция для управления гранд-тоталом
     private applyGrandTotalSetting(container: HTMLElement): void {
         const showGrandTotal = this.settings.subTotals.grandTotal?.value;
         if (showGrandTotal === false) {
-            // Удаляем все строки с классом totalRow и data-level="0"
             const grandTotalRows = container.querySelectorAll('tr.totalRow[data-level="0"]');
             grandTotalRows.forEach(row => row.remove());
         }
