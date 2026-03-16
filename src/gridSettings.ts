@@ -5,15 +5,30 @@ export function applyGridSettings(container: HTMLElement, settings: VisualSettin
     if (!table) return;
     const grid = settings.grid;
 
-    // Глобальный размер шрифта
-    const fontSize = grid.optionsGroup.globalFontSize.value;
-    if (fontSize) {
-        container.style.fontSize = fontSize + 'px';
-    }
-
     const rows = table.rows;
     const totalRows = rows.length;
     if (totalRows === 0) return;
+
+    // Глобальный размер шрифта – применяется только к th
+    const fontSize = grid.optionsGroup.globalFontSize.value;
+    if (fontSize) {
+        const baseFontSize = 20; // базовый размер шрифта в CSS
+        const baseHeight = 42;    // базовая высота ячеек
+        const baseLineHeight = 20; // базовый line-height
+        const scale = fontSize / baseFontSize;
+
+        const newHeight = Math.round(baseHeight * scale);
+        const newLineHeight = Math.round(baseLineHeight * scale);
+
+        const thElements = table.querySelectorAll('th');
+        thElements.forEach((th: HTMLElement) => {
+            th.style.fontSize = fontSize + 'px';
+            th.style.height = newHeight + 'px';
+            th.style.minHeight = newHeight + 'px';
+            th.style.maxHeight = newHeight + 'px';
+            th.style.lineHeight = newLineHeight + 'px';
+        });
+    }
 
     // Сброс всех границ (чтобы не было конфликтов)
     for (let i = 0; i < rows.length; i++) {
@@ -23,6 +38,7 @@ export function applyGridSettings(container: HTMLElement, settings: VisualSettin
             cell.style.borderBottom = '';
             cell.style.borderLeft = '';
             cell.style.borderRight = '';
+            cell.style.boxShadow = '';
         }
     }
 
@@ -76,8 +92,8 @@ export function applyGridSettings(container: HTMLElement, settings: VisualSettin
     const headerLevels = columnHeaderIndices.map(idx => {
         const levelAttr = rows[idx].getAttribute('data-level');
         return levelAttr ? parseInt(levelAttr, 10) : 0;
-    });
-    const maxHeaderLevel = Math.max(...headerLevels);
+    }).filter(level => !isNaN(level));
+    const maxHeaderLevel = headerLevels.length ? Math.max(...headerLevels) : 0;
 
     // Заголовки строк – первый столбец
     const rowHeaderColIndices = [0];
@@ -118,54 +134,28 @@ export function applyGridSettings(container: HTMLElement, settings: VisualSettin
 
         if (!apply) return;
 
-        // --- Специальная логика для columnHeader ---
+        // Для columnHeader мы обработаем отдельно после цикла, поэтому здесь ничего не делаем
         if (borderSection === 'columnHeader') {
-            // Левая граница для первого столбца
-            if (posLeft && colIdx === 0) {
-                cell.style.borderLeft = `${borderWidth}px solid ${borderColor}`;
-            }
-            // Правая граница для последнего столбца
-            if (posRight && colIdx === rows[rowIdx].cells.length - 1) {
-                cell.style.borderRight = `${borderWidth}px solid ${borderColor}`;
-            }
-
-            const levelAttr = rows[rowIdx].getAttribute('data-level');
-            const level = levelAttr ? parseInt(levelAttr, 10) : 0;
-
-            // Нижняя граница для строки с data-level = 0
-            if (posBottom && level === 0) {
-                cell.style.borderBottom = `${borderWidth}px solid ${borderColor}`;
-            }
-            // Верхняя граница для строки с data-level = max
-            if (posTop && level === maxHeaderLevel) {
-                cell.style.borderTop = `${borderWidth}px solid ${borderColor}`;
-            }
             return;
         }
 
         // --- Специальная логика для rowHeader ---
         if (borderSection === 'rowHeader') {
-            // Применяем только к первому столбцу (заголовки строк) и только к midRow или totalRow
             if (colIdx !== 0) return;
             const row = rows[rowIdx];
             const isMidRow = row.classList.contains('midRow');
             const isTotalRow = row.classList.contains('totalRow');
-            if (!isMidRow && !isTotalRow) return; // не применяем к topRow
+            if (!isMidRow && !isTotalRow) return;
 
-            // Левая граница (внешняя)
             if (posLeft) {
                 cell.style.borderLeft = `${borderWidth}px solid ${borderColor}`;
             }
-            // Правая граница (отделяет заголовки от данных)
             if (posRight) {
                 cell.style.borderRight = `${borderWidth}px solid ${borderColor}`;
             }
-
-            // Верхняя граница для самой первой строки midRow
             if (posTop && isMidRow && rowIdx === firstMidRowIdx) {
                 cell.style.borderTop = `${borderWidth}px solid ${borderColor}`;
             }
-            // Нижняя граница для totalRow (если есть)
             if (posBottom && isTotalRow && rowIdx === totalRowIdx) {
                 cell.style.borderBottom = `${borderWidth}px solid ${borderColor}`;
             }
@@ -174,35 +164,28 @@ export function applyGridSettings(container: HTMLElement, settings: VisualSettin
 
         // --- Специальная логика для values ---
         if (borderSection === 'values') {
-            // Применяем только к ячейкам данных (td)
             if (cell.tagName !== 'TD') return;
 
             const row = rows[rowIdx];
             const isMidRow = row.classList.contains('midRow');
             const isTotalRow = row.classList.contains('totalRow');
 
-            // Левая граница для первого столбца данных (colIdx === 1)
             if (posLeft && colIdx === 1) {
                 cell.style.borderLeft = `${borderWidth}px solid ${borderColor}`;
             }
-            // Правая граница для последнего столбца данных
             if (posRight && colIdx === rows[rowIdx].cells.length - 1) {
                 cell.style.borderRight = `${borderWidth}px solid ${borderColor}`;
             }
-
-            // Верхняя граница для всех td первой строки midRow
             if (posTop && isMidRow && rowIdx === firstMidRowIdx) {
                 cell.style.borderTop = `${borderWidth}px solid ${borderColor}`;
             }
-
-            // Нижняя граница для всех td в totalRow
             if (posBottom && isTotalRow && rowIdx === totalRowIdx) {
                 cell.style.borderBottom = `${borderWidth}px solid ${borderColor}`;
             }
             return;
         }
 
-        // --- Обычная логика для all (и для values, если бы мы не перехватили) ---
+        // --- Обычная логика для all ---
         if (posTop && rowIdx === 0) {
             cell.style.borderTop = `${borderWidth}px solid ${borderColor}`;
         }
@@ -223,9 +206,54 @@ export function applyGridSettings(container: HTMLElement, settings: VisualSettin
         }
     }
 
+    // --- Отдельная обработка для columnHeader с использованием псевдоэлемента (без потери sticky) ---
+    const thead = table.querySelector('thead');
+    if (borderSection === 'columnHeader' && thead) {
+        // Сбрасываем границы и тени у всех th внутри thead
+        const thInHead = thead.querySelectorAll('th');
+        thInHead.forEach(th => {
+            th.style.borderLeft = '';
+            th.style.borderRight = '';
+            th.style.borderTop = '';
+            th.style.borderBottom = '';
+            th.style.boxShadow = '';
+        });
+
+        // Убираем возможный border у самого thead
+        thead.style.borderTop = '';
+        thead.style.borderRight = '';
+        thead.style.borderBottom = '';
+        thead.style.borderLeft = '';
+
+        // Создаём или находим контейнер для рамки
+        let borderDiv = thead.querySelector('.thead-border');
+        if (!borderDiv) {
+            borderDiv = document.createElement('div');
+            borderDiv.className = 'thead-border';
+            thead.appendChild(borderDiv);
+        }
+
+        const div = borderDiv as HTMLElement;
+        div.style.position = 'absolute';
+        div.style.top = '0';
+        div.style.left = '0';
+        div.style.width = '100%';
+        div.style.height = '100%';
+        div.style.pointerEvents = 'none'; // чтобы не мешать кликам
+        div.style.boxSizing = 'border-box';
+        div.style.zIndex = '2000'; // выше, чем у ячеек первого столбца (у них z-index: 1000)
+
+        const shadows: string[] = [];
+        if (posTop) shadows.push(`inset 0 ${borderWidth}px 0 ${borderColor}`);
+        if (posBottom) shadows.push(`inset 0 -${borderWidth}px 0 ${borderColor}`);
+        if (posLeft) shadows.push(`inset ${borderWidth}px 0 0 ${borderColor}`);
+        if (posRight) shadows.push(`inset -${borderWidth}px 0 0 ${borderColor}`);
+
+        div.style.boxShadow = shadows.length ? shadows.join(', ') : 'none';
+    }
+
     // Дополнительные границы при выборе 'all'
     if (borderSection === 'all') {
-        // 1. Нижняя граница для topRow с data-level="0"
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             if (row.classList.contains('topRow') && row.getAttribute('data-level') === '0') {
@@ -237,7 +265,6 @@ export function applyGridSettings(container: HTMLElement, settings: VisualSettin
             }
         }
 
-        // 2. Вертикальная граница между первым и вторым столбцом для midRow и totalRow
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             if (row.classList.contains('midRow') || row.classList.contains('totalRow')) {
