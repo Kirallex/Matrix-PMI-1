@@ -100,7 +100,6 @@
   background-color: #66B0C2 !important;
   color: #FFFFFF !important;
   font-weight: bold !important;
-  border-color: #5A9BAD;
 }
 .datagrid .totalRow th.formatRowNodes {
   display: flex;

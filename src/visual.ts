@@ -129,6 +129,7 @@ export class Visual implements IVisual {
             }
 
             this.applyGrandTotalSetting(formattedMatrix);
+            this.applyNonGrandTotalSetting(formattedMatrix);
             
             if (this.currentHeight) {
                 formattedMatrix.style.height = this.currentHeight + 'px';
@@ -282,6 +283,14 @@ export class Visual implements IVisual {
         if (showGrandTotal === false) {
             const grandTotalRows = container.querySelectorAll('tr.totalRow[data-level="0"]');
             grandTotalRows.forEach(row => row.remove());
+        }
+    }
+
+    private applyNonGrandTotalSetting(container: HTMLElement): void {
+        const showNonGrandTotal = this.settings.subTotals.nonGrandTotal?.value;
+        if (showNonGrandTotal === false) {
+            const nonGrandTotalRows = container.querySelectorAll('tr.totalRow:not([data-level="0"])');
+            nonGrandTotalRows.forEach(row => row.remove());
         }
     }
 

@@ -22,9 +22,14 @@ class SubtotalsCard extends FormattingSettingsCard {
         displayName: "Grand total",
         value: true
     });
+    public nonGrandTotal = new formattingSettings.ToggleSwitch({
+        name: "nonGrandTotal",
+        displayName: "NonGrand total",
+        value: false
+    });
     public name: string = "subTotals";
     public displayName: string = "Subtotals";
-    public slices: FormattingSettingsSlice[] = [this.rowSubtotals, this.columnSubtotals, this.grandTotal];
+    public slices: FormattingSettingsSlice[] = [this.rowSubtotals, this.columnSubtotals, this.grandTotal, this.nonGrandTotal];
 }
 
 // --- Карточка Hide Empty Columns ---
@@ -44,7 +49,7 @@ class HorizontalGridlinesGroup extends FormattingSettingsCard {
     public color = new formattingSettings.ColorPicker({
         name: "horizontalColor",
         displayName: "Color",
-        value: { value: "#D0D5D8" }
+        value: { value: "#F1F1F1" }
     });
     public width = new formattingSettings.NumUpDown({
         name: "horizontalWidth",
@@ -62,7 +67,7 @@ class VerticalGridlinesGroup extends FormattingSettingsCard {
     public color = new formattingSettings.ColorPicker({
         name: "verticalColor",
         displayName: "Color",
-        value: { value: "#D0D5D8" }
+        value: { value: "#F1F1F1" }
     });
     public width = new formattingSettings.NumUpDown({
         name: "verticalWidth",
@@ -111,7 +116,7 @@ class BorderGroup extends FormattingSettingsCard {
     public color = new formattingSettings.ColorPicker({
         name: "borderColor",
         displayName: "Color",
-        value: { value: "#D0D5D8" }
+        value: { value: "#F1F1F1" }
     });
     public width = new formattingSettings.NumUpDown({
         name: "borderWidth",

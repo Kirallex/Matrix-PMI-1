@@ -99,6 +99,13 @@
                     },
                     "displayName": "Grand total",
                     "description": "Show grand total row"
+                },
+                "nonGrandTotal": {
+                    "type": {
+                        "bool": true
+                    },
+                    "displayName": "Nongrand total",
+                    "description": "Show Nongrand total row"
                 }
             }
         },

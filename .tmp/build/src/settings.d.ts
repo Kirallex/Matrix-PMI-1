@@ -7,6 +7,7 @@ declare class SubtotalsCard extends FormattingSettingsCard {
     rowSubtotals: formattingSettings.ToggleSwitch;
     columnSubtotals: formattingSettings.ToggleSwitch;
     grandTotal: formattingSettings.ToggleSwitch;
+    nonGrandTotal: formattingSettings.ToggleSwitch;
     name: string;
     displayName: string;
     slices: FormattingSettingsSlice[];
