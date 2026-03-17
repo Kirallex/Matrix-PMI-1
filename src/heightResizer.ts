@@ -1,4 +1,3 @@
-// heightResizer.ts
 export class HeightResizer {
     private static resizing: boolean = false;
     private static container: HTMLElement | null = null;
@@ -12,9 +11,11 @@ export class HeightResizer {
         this.cleanup();
         this.onResizeCallback = onResize || null;
         this.container = container;
+
         if (getComputedStyle(container).position === 'static') {
             container.style.position = 'relative';
         }
+
         this.handle = document.createElement('div');
         this.handle.style.cssText = `
             position: absolute;
@@ -24,10 +25,13 @@ export class HeightResizer {
             height: 8px;
             cursor: ns-resize;
             background-color: transparent;
-            z-index: 1000;
+            z-index: 10000;
             pointer-events: auto;
         `;
         container.appendChild(this.handle);
+
+        console.log('HeightResizer: handle created', this.handle);
+
         this.handle.addEventListener('mousedown', this.onMouseDown);
         document.addEventListener('mousemove', this.onMouseMove);
         document.addEventListener('mouseup', this.onMouseUp);
@@ -41,6 +45,7 @@ export class HeightResizer {
         this.startHeight = this.container.offsetHeight;
         document.body.style.cursor = 'ns-resize';
         document.body.style.userSelect = 'none';
+        console.log('HeightResizer: mousedown', this.startY, this.startHeight);
     };
 
     private static onMouseMove = (e: MouseEvent): void => {
@@ -51,6 +56,7 @@ export class HeightResizer {
         if (this.onResizeCallback) {
             this.onResizeCallback(newHeight);
         }
+        console.log('HeightResizer: mousemove', newHeight);
     };
 
     private static onMouseUp = (e: MouseEvent): void => {
@@ -58,6 +64,7 @@ export class HeightResizer {
             this.resizing = false;
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
+            console.log('HeightResizer: mouseup');
         }
     };
 
