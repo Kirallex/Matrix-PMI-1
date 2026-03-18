@@ -1,6 +1,7 @@
 import powerbi from "powerbi-visuals-api";
 export declare class MatrixDataviewHtmlFormatter {
-    static formatDataViewMatrix(matrix: powerbi.DataViewMatrix, valueSources?: powerbi.DataViewMetadataColumn[], expandedNodes?: Set<string>, forceExpandAll?: boolean): HTMLElement;
+    static formatDataViewMatrix(matrix: powerbi.DataViewMatrix, valueSources?: powerbi.DataViewMetadataColumn[], expandedNodes?: Set<string>, showNonGrandTotal?: boolean, // новый параметр
+    forceExpandAll?: boolean): HTMLElement;
     private static formatColumnHeaders;
     private static formatColumnLevel;
     private static calculateLeafCount;

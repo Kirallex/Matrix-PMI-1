@@ -7,6 +7,7 @@ export class MatrixDataviewHtmlFormatter {
         matrix: powerbi.DataViewMatrix,
         valueSources?: powerbi.DataViewMetadataColumn[],
         expandedNodes?: Set<string>,
+        showNonGrandTotal: boolean = true,   // новый параметр
         forceExpandAll: boolean = false
     ): HTMLElement {
         const htmlElement = document.createElement('div');
@@ -33,7 +34,8 @@ export class MatrixDataviewHtmlFormatter {
             columnSourceIndices,
             expandedNodes,
             '',
-            forceExpandAll // передаём флаг дальше
+            forceExpandAll, // передаём флаг дальше
+            showNonGrandTotal
         );
 
         tableElement.appendChild(theadElement);
@@ -196,13 +198,20 @@ export class MatrixDataviewHtmlFormatter {
         columnSourceIndices?: number[],
         expandedNodes?: Set<string>,
         path: string = '',
-        forceExpandAll: boolean = false
+        forceExpandAll: boolean = false,
+        showNonGrandTotal: boolean = true
     ) {
         if (!root) return;
 
         const level = (root.level !== undefined && root.level !== null) ? root.level : -1;
 
+        // Если это промежуточный субтотал (не гранд-тотал) и они отключены – не создаём строку
+        if (root.isSubtotal && level !== 0 && !showNonGrandTotal) {
+            return; // пропускаем эту строку и её детей (субтоталы обычно не имеют детей)
+        }
+
         if (level >= 0) {
+            // ... код создания строки без изменений (trElement, thElement, классы, ячейки данных)
             const trElement = document.createElement('tr');
             trElement.setAttribute('data-level', level.toString());
 
@@ -231,7 +240,7 @@ export class MatrixDataviewHtmlFormatter {
                 headerText += displayValue;
             }
 
-            // Кнопка раскрытия, если есть дети
+            // Кнопка раскрытия (только если есть дети и это не субтотал)
             const hasChildren = root.children && root.children.length > 0 && !root.isSubtotal;
             if (hasChildren) {
                 const expandBtn = document.createElement('span');
@@ -246,6 +255,7 @@ export class MatrixDataviewHtmlFormatter {
             thElement.appendChild(textNode);
             trElement.appendChild(thElement);
 
+            // Класс строки
             if (root.isSubtotal) {
                 trElement.classList.add('totalRow');
             } else {
@@ -265,13 +275,13 @@ export class MatrixDataviewHtmlFormatter {
             topElement.appendChild(trElement);
         }
 
-        // Обработка детей
+        // Обработка детей (если есть)
         if (root.children && root.children.length > 0 && !root.isSubtotal) {
             const showChildren = forceExpandAll || (level === -1) || (expandedNodes?.has(path) === true);
             if (showChildren) {
                 for (const child of root.children) {
                     const childPath = path ? `${path}-${child.levelSourceIndex || child.value}` : `${child.levelSourceIndex || child.value}`;
-                    this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices, expandedNodes, childPath, forceExpandAll);
+                    this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices, expandedNodes, childPath, forceExpandAll, showNonGrandTotal);
                 }
             }
         }

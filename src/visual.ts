@@ -265,11 +265,15 @@ export class Visual implements IVisual {
 
         try {
             const valueSources = (this.currentDataView.matrix as any).valueSources;
+            // Получаем значение настройки nonGrandTotal (показывать промежуточные субтоталы или нет)
+            const showNonGrandTotal = this.settings.subTotals.nonGrandTotal?.value ?? true;
+
             // Генерируем полную таблицу (forceExpandAll = true)
             const fullMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
                 this.currentDataView.matrix,
                 valueSources,
-                this.expandedNodes, // этот параметр не будет использоваться из-за forceExpandAll
+                this.expandedNodes, // не используется при forceExpandAll
+                showNonGrandTotal,
                 true // forceExpandAll
             );
 
