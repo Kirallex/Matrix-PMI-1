@@ -247,19 +247,53 @@ export class Visual implements IVisual {
     }
 
     private exportDataView(cntRows: number): void {
-        console.log("Exporting data from HTML table...");
-        const table = this.target.querySelector('table');
-        if (!table) {
-            console.error("No table found for export");
+        console.log("Exporting data with all nodes expanded...");
+
+        if (!this.currentDataView) {
+            console.error("No data view found");
             this.resetExportState();
             return;
         }
+
+        // Создаём временный скрытый контейнер
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.left = '-9999px';
+        tempContainer.style.top = '-9999px';
+        tempContainer.style.visibility = 'hidden';
+        document.body.appendChild(tempContainer);
+
         try {
-            const downloader = new ExcelDownloader();
-            downloader.exportTable(table as HTMLElement, cntRows);
+            const valueSources = (this.currentDataView.matrix as any).valueSources;
+            // Генерируем полную таблицу (forceExpandAll = true)
+            const fullMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
+                this.currentDataView.matrix,
+                valueSources,
+                this.expandedNodes, // этот параметр не будет использоваться из-за forceExpandAll
+                true // forceExpandAll
+            );
+
+            // Применяем те же настройки (скрытие пустых колонок, настройки сетки)
+            if (this.settings?.hideEmptyCols?.hideColsLabel?.value) {
+                this.applyHideEmptyColumnsSetting(fullMatrix);
+            }
+            applyGridSettings(fullMatrix, this.settings);
+
+            tempContainer.appendChild(fullMatrix);
+
+            // Экспортируем таблицу
+            const table = fullMatrix.querySelector('table');
+            if (table) {
+                const downloader = new ExcelDownloader();
+                downloader.exportTable(table as HTMLElement, cntRows);
+            } else {
+                console.error("No table generated for export");
+            }
         } catch (error) {
             console.error("Export failed:", error);
         } finally {
+            // Удаляем временный контейнер
+            document.body.removeChild(tempContainer);
             this.resetExportState();
         }
     }

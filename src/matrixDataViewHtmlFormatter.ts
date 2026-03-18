@@ -6,7 +6,8 @@ export class MatrixDataviewHtmlFormatter {
     public static formatDataViewMatrix(
         matrix: powerbi.DataViewMatrix,
         valueSources?: powerbi.DataViewMetadataColumn[],
-        expandedNodes?: Set<string>
+        expandedNodes?: Set<string>,
+        forceExpandAll: boolean = false
     ): HTMLElement {
         const htmlElement = document.createElement('div');
         htmlElement.classList.add('datagrid');
@@ -31,7 +32,8 @@ export class MatrixDataviewHtmlFormatter {
             valueSources,
             columnSourceIndices,
             expandedNodes,
-            ''
+            '',
+            forceExpandAll // передаём флаг дальше
         );
 
         tableElement.appendChild(theadElement);
@@ -193,7 +195,8 @@ export class MatrixDataviewHtmlFormatter {
         valueSources?: powerbi.DataViewMetadataColumn[],
         columnSourceIndices?: number[],
         expandedNodes?: Set<string>,
-        path: string = ''
+        path: string = '',
+        forceExpandAll: boolean = false
     ) {
         if (!root) return;
 
@@ -264,11 +267,11 @@ export class MatrixDataviewHtmlFormatter {
 
         // Обработка детей
         if (root.children && root.children.length > 0 && !root.isSubtotal) {
-            const showChildren = (level === -1) || (expandedNodes?.has(path) === true);
+            const showChildren = forceExpandAll || (level === -1) || (expandedNodes?.has(path) === true);
             if (showChildren) {
                 for (const child of root.children) {
                     const childPath = path ? `${path}-${child.levelSourceIndex || child.value}` : `${child.levelSourceIndex || child.value}`;
-                    this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices, expandedNodes, childPath);
+                    this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices, expandedNodes, childPath, forceExpandAll);
                 }
             }
         }
