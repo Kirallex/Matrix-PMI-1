@@ -21,7 +21,6 @@ export class Visual implements IVisual {
     private settings: VisualSettings;
     private host: Host;
     private currentDataView: DataView;
-    private lastDataView: DataView | null = null;
     private exportButton: HTMLButtonElement | null = null;
     private isExporting: boolean = false;
     private pendingExport: boolean = false;
@@ -30,7 +29,11 @@ export class Visual implements IVisual {
     private columnWidths: { [colIndex: number]: number } = {};
     private currentHeight: number | null = null;
     private formattingSettingsService: FormattingSettingsService;
-    private updateTimeout: any = null;
+
+    // Флаги для загрузки всех данных при старте
+    private loadingAllData: boolean = false;
+    private allDataLoaded: boolean = false;
+    private pendingRenderAfterLoad: boolean = false;
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
@@ -45,7 +48,6 @@ export class Visual implements IVisual {
             return;
         }
 
-        this.lastDataView = options.dataViews[0];
         this.currentDataView = options.dataViews[0];
         this.settings = this.formattingSettingsService.populateFormattingSettingsModel(
             VisualSettings,
@@ -56,6 +58,47 @@ export class Visual implements IVisual {
         const rowCount = this.countRows(this.currentDataView);
         console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
 
+        // Если это новый набор данных (например, изменились фильтры) – сбрасываем флаги загрузки
+        if (options.operationKind === VisualDataChangeOperationKind.Create) {
+            this.allDataLoaded = false;
+            this.loadingAllData = false;
+        }
+
+        // --- Логика автоматической загрузки всех сегментов (не для экспорта) ---
+        if (!this.isExporting && !this.allDataLoaded) {
+            // Если ещё не начали загрузку, проверяем, есть ли сегменты
+            if (!this.loadingAllData) {
+                if (this.currentDataView.metadata?.segment) {
+                    console.log('Starting to load all data segments for display...');
+                    this.loadingAllData = true;
+                    this.requestNextDataSegment();
+                    // Не рендерим пока, ждём завершения
+                    return;
+                } else {
+                    // Нет сегментов – все данные уже здесь
+                    this.allDataLoaded = true;
+                }
+            }
+
+            // Если мы в процессе загрузки и пришёл новый сегмент
+            if (this.loadingAllData && options.operationKind === VisualDataChangeOperationKind.Append) {
+                console.log('Received next data segment, continuing...');
+                this.pendingRenderAfterLoad = true;
+                if (this.currentDataView.metadata?.segment) {
+                    this.requestNextDataSegment();
+                } else {
+                    // Все данные получены
+                    console.log('All data loaded.');
+                    this.loadingAllData = false;
+                    this.allDataLoaded = true;
+                    this.renderVisualization(this.countRows(this.currentDataView));
+                    this.pendingRenderAfterLoad = false;
+                }
+                return;
+            }
+        }
+
+        // --- Сброс состояний при изменении данных (не при Append) ---
         if (options.operationKind !== VisualDataChangeOperationKind.Append && rowCount !== this.prevRowCount) {
             console.log('!!! Clearing expandedNodes and columnWidths !!!');
             this.expandedNodes.clear();
@@ -63,11 +106,15 @@ export class Visual implements IVisual {
             this.prevRowCount = rowCount;
         }
 
+        // --- Обработка экспорта (не мешает загрузке) ---
         if (this.isExporting) {
             this.handleDataSegment(this.currentDataView, rowCount);
         }
 
-        this.renderVisualization(rowCount);
+        // Обычный рендеринг (если мы не в процессе загрузки всех данных)
+        if (!this.loadingAllData) {
+            this.renderVisualization(rowCount);
+        }
 
         if (this.pendingExport) {
             this.exportDataView(rowCount);
@@ -77,6 +124,25 @@ export class Visual implements IVisual {
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
         return this.formattingSettingsService.buildFormattingModel(this.settings);
+    }
+
+    private requestNextDataSegment(): void {
+        try {
+            const accepted = this.host.fetchMoreData(true);
+            if (!accepted) {
+                console.log('Cannot fetch more data, stopping.');
+                this.loadingAllData = false;
+                this.allDataLoaded = true;
+                if (this.pendingRenderAfterLoad) {
+                    this.renderVisualization(this.countRows(this.currentDataView));
+                    this.pendingRenderAfterLoad = false;
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching more data:', error);
+            this.loadingAllData = false;
+            this.allDataLoaded = true;
+        }
     }
 
     private countRows(dataView: DataView): number {
@@ -207,19 +273,12 @@ export class Visual implements IVisual {
             this.exportButton.textContent = "Loading data...";
         }
 
-        const hasSegment = this.currentDataView.metadata?.segment;
-        console.log(`[handleExportClick] currentDataView.metadata.segment: ${hasSegment ? 'YES' : 'NO'}`);
-
-        if (hasSegment) {
-            console.log("Segment exists → requesting more data...");
-            this.requestMoreData(cntRows);
-        } else {
-            console.log("No segment → exporting current data immediately");
-            this.exportDataView(cntRows);
-            this.resetExportState();
-        }
+        // При экспорте используем уже загруженные данные, не запрашиваем новые сегменты
+        // Если данные ещё не полностью загружены, экспортируем то, что есть (но кнопка может быть нажата до завершения)
+        this.exportDataView(cntRows);
     }
 
+    // Этот метод больше не используется для экспорта, оставлен для совместимости, но можно удалить
     private requestMoreData(cntRows: number): void {
         try {
             console.log("Requesting more data via fetchMoreData(true)...");
@@ -233,6 +292,7 @@ export class Visual implements IVisual {
     }
 
     private handleDataSegment(dataView: DataView, cntRows: number): void {
+        // Этот метод не используется при новом подходе (экспорт из полных данных), оставлен для обратной совместимости
         console.log(`[handleDataSegment] received. segment: ${dataView.metadata?.segment ? 'YES' : 'NO'}`);
         const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size;
         if (dataView.metadata?.segment) {

@@ -8,7 +8,6 @@ export declare class Visual implements IVisual {
     private settings;
     private host;
     private currentDataView;
-    private lastDataView;
     private exportButton;
     private isExporting;
     private pendingExport;
@@ -17,10 +16,13 @@ export declare class Visual implements IVisual {
     private columnWidths;
     private currentHeight;
     private formattingSettingsService;
-    private updateTimeout;
+    private loadingAllData;
+    private allDataLoaded;
+    private pendingRenderAfterLoad;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
     getFormattingModel(): powerbi.visuals.FormattingModel;
+    private requestNextDataSegment;
     private countRows;
     private renderVisualization;
     private applyColumnWidths;
