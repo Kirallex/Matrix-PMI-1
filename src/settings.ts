@@ -192,7 +192,7 @@ class ValuesGroup extends FormattingSettingsCard {
         displayName: "Font",
         fontFamily: new formattingSettings.FontPicker({
             name: "fontFamily",
-            value: "Segoe UI"
+            value: "Segoe UI Semibold"
         }),
         fontSize: new formattingSettings.NumUpDown({
             name: "fontSize",
@@ -203,7 +203,7 @@ class ValuesGroup extends FormattingSettingsCard {
         bold: new formattingSettings.ToggleSwitch({
             name: "bold",
             displayName: "Bold",
-            value: true
+            value: false
         }),
         italic: new formattingSettings.ToggleSwitch({
             name: "italic",
@@ -265,15 +265,107 @@ class ValuesCard extends FormattingSettingsCompositeCard {
     }
 }
 
+
+
+class ColumnHeadersGroup extends FormattingSettingsCard {
+    public font = new formattingSettings.FontControl({
+        name: "font",
+        displayName: "Font",
+        fontFamily: new formattingSettings.FontPicker({
+            name: "fontFamily",
+            value: "Segoe UI"
+        }),
+        fontSize: new formattingSettings.NumUpDown({
+            name: "fontSize",
+            displayName: "Size",
+            value: 9,
+            options: { minValue: 8, maxValue: 72, step: 1 } as any
+        }),
+        bold: new formattingSettings.ToggleSwitch({
+            name: "bold",
+            displayName: "Bold",
+            value: true
+        }),
+        italic: new formattingSettings.ToggleSwitch({
+            name: "italic",
+            displayName: "Italic",
+            value: false
+        }),
+        underline: new formattingSettings.ToggleSwitch({
+            name: "underline",
+            displayName: "Underline",
+            value: false
+        })
+    });
+
+    public textColor = new formattingSettings.ColorPicker({
+        name: "textColor",
+        displayName: "Text color",
+        value: { value: "#1E2323" }
+    });
+
+    public backgroundColor = new formattingSettings.ColorPicker({
+        name: "backgroundColor",
+        displayName: "Background color",
+        value: { value: "#FFFFFF" }
+    });
+
+    // Выравнивание заголовков (кнопки)
+    public headerAlignment = new formattingSettings.AlignmentGroup({
+        name: "headerAlignment",
+        displayName: "Header alignment",
+        value: "left",
+        mode: powerbi.visuals.AlignmentGroupMode.Horizonal
+    });
+
+    // Выравнивание текста заголовков (кнопки)
+    public titleAlignment = new formattingSettings.AlignmentGroup({
+        name: "titleAlignment",
+        displayName: "Title alignment",
+        value: "left",
+        mode: powerbi.visuals.AlignmentGroupMode.Horizonal
+    });
+
+    public name: string = "columnHeadersGroup";
+    public displayName: string = "Text";
+    public slices: FormattingSettingsSlice[] = [
+        this.font,
+        this.textColor,
+        this.backgroundColor,
+        this.headerAlignment,
+        this.titleAlignment
+    ];
+}
+
+// --- Композитная карточка Column Headers ---
+class ColumnHeadersCard extends FormattingSettingsCompositeCard {
+    public columnHeadersGroup: ColumnHeadersGroup;
+    public groups: FormattingSettingsCard[];
+
+    public name: string = "columnHeaders";
+    public displayName: string = "Column Headers";
+
+    constructor() {
+        super();
+
+        this.columnHeadersGroup = new ColumnHeadersGroup();
+        this.groups = [this.columnHeadersGroup];
+    }
+}
+
+
+
+
 // --- Основная модель настроек ---
 export class VisualSettings extends FormattingSettingsModel {
     public subTotals: SubtotalsCard = new SubtotalsCard();
     public hideEmptyCols: HideEmptyColsCard = new HideEmptyColsCard();
     public grid: GridCard = new GridCard();
     public values: ValuesCard = new ValuesCard();
+    public columnHeaders: ColumnHeadersCard = new ColumnHeadersCard();
 
     constructor() {
         super();
-        this.cards = [this.subTotals, this.hideEmptyCols, this.grid, this.values];
+        this.cards = [this.subTotals, this.hideEmptyCols, this.grid, this.values, this.columnHeaders];
     }
 }

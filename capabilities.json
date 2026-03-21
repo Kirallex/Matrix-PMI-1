@@ -178,6 +178,20 @@
                     "type": { "fill": { "solid": { "color": true } } }
                 }
             }
+        },
+        "columnHeaders": {
+            "displayName": "Column Headers",
+            "properties": {
+                "fontFamily": { "type": { "formatting": { "fontFamily": true } } },
+                "fontSize": { "type": { "formatting": { "fontSize": true } } },
+                "bold": { "type": { "bool": true } },
+                "italic": { "type": { "bool": true } },
+                "underline": { "type": { "bool": true } },
+                "textColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "backgroundColor": { "type": { "fill": { "solid": { "color": true } } } },
+                "headerAlignment": { "type": { "enumeration": [] } },
+                "titleAlignment": { "type": { "enumeration": [] } }
+            }
         }
     },
     "subtotals": {

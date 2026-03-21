@@ -15,6 +15,7 @@ import { MatrixEmptyColumnsHider } from "./hideEmptyCols";
 import VisualDataChangeOperationKind = powerbi.VisualDataChangeOperationKind;
 import { applyGridSettings } from "./gridSettings";
 import { applyValuesSettings } from "./valuesSettings";
+import { applyColumnHeadersSettings } from "./columnHeadersSettings";
 import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
 
 export class Visual implements IVisual {
@@ -198,6 +199,7 @@ export class Visual implements IVisual {
             }
 
             applyValuesSettings(formattedMatrix, this.settings);
+            applyColumnHeadersSettings(formattedMatrix, this.settings);
             applyGridSettings(formattedMatrix, this.settings);
             this.target.appendChild(formattedMatrix);
 
