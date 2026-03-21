@@ -2,37 +2,34 @@
 import "./../style/excelDownloadModal.css"
 
 export class ExcelDownloader {
-    /**
-     * Конструктор больше не требует host и dataView, так как экспорт идёт из готовой HTML-таблицы.
-     * Оставлен для обратной совместимости.
-     */
     constructor() {}
 
     /**
      * Публичный метод для экспорта HTML-таблицы в CSV.
-     * Вызывается из visual.ts после применения всех настроек (hideEmptyCols, subTotals).
      * @param table - DOM-элемент таблицы (HTMLElement)
      */
-    public exportTable(table: HTMLElement, cntRows: number): void {
-        this.exportToCSV(table, cntRows);
+    public exportTable(table: HTMLElement): void {
+        this.exportToCSV(table);
     }
 
-    /**
-     * Экспорт таблицы в CSV (прежняя реализация)
-     * @param table - HTML-таблица
-     */
-    private exportToCSV(table: HTMLElement, cntRows: Number): void {
+    private exportToCSV(table: HTMLElement): void {
         const rows = table.querySelectorAll('tr');
+        let numOfRows = rows.length;
         let csv = '';
         
-        for (let i = 0; i < rows.length; i++) {
+        for (let i = 0; i < numOfRows; i++) {
             const cols = rows[i].querySelectorAll('td, th');
             const row: string[] = [];
             
             for (let j = 0; j < cols.length; j++) {
-                let text = cols[j].textContent?.trim() || '';
+                // Получаем текст ячейки (включая неразрывные пробелы)
+                let text = cols[j].textContent || '';
+                // Удаляем переносы строк и возврат каретки, заменяя их пробелом
+                text = text.replace(/[\r\n]+/g, ' ');
+                // Экранируем двойные кавычки
                 text = text.replace(/"/g, '""');
-                if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+                // Оборачиваем в кавычки, если есть запятая или кавычки (переносов уже нет)
+                if (text.includes(',') || text.includes('"')) {
                     text = `"${text}"`;
                 }
                 row.push(text);
@@ -50,7 +47,7 @@ export class ExcelDownloader {
         
         const blobUrl = URL.createObjectURL(blob);
         
-        this.showDownloadModal(blobUrl, cntRows);
+        this.showDownloadModal(blobUrl, numOfRows);
     }
 
     private showDownloadModal(blobUrl: string, cntRows: Number): void {
@@ -126,9 +123,6 @@ export class ExcelDownloader {
         }, 100);
     }
 
-    /**
-     * Копирование ссылки в буфер обмена (без изменений)
-     */
     private copyToClipboard(text: string, button: HTMLButtonElement): void {
         const originalText = button.textContent;
         

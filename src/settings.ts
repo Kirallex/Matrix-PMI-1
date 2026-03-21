@@ -67,7 +67,7 @@ class VerticalGridlinesGroup extends FormattingSettingsCard {
     public color = new formattingSettings.ColorPicker({
         name: "verticalColor",
         displayName: "Color",
-        value: { value: "#F1F1F1" }
+        value: { value: "#E1E1E1" }
     });
     public width = new formattingSettings.NumUpDown({
         name: "verticalWidth",
@@ -148,7 +148,7 @@ class OptionsGroup extends FormattingSettingsCard {
     public globalFontSize = new formattingSettings.NumUpDown({
         name: "globalFontSize",
         displayName: "Global font size",
-        value: 20,
+        value: 9,
         options: { minValue: 8, maxValue: 72, step: 1 } as any
     });
     public name: string = "optionsGroup";
@@ -184,14 +184,96 @@ class GridCard extends FormattingSettingsCompositeCard {
     }
 }
 
+// --- Группа Values (содержит настройки шрифта и цветов) ---
+class ValuesGroup extends FormattingSettingsCard {
+    // Font control (family, size, bold, italic, underline)
+    public font = new formattingSettings.FontControl({
+        name: "font",
+        displayName: "Font",
+        fontFamily: new formattingSettings.FontPicker({
+            name: "fontFamily",
+            value: "Segoe UI"
+        }),
+        fontSize: new formattingSettings.NumUpDown({
+            name: "fontSize",
+            displayName: "Size",
+            value: 9,
+            options: { minValue: 8, maxValue: 72, step: 1 } as any
+        }),
+        bold: new formattingSettings.ToggleSwitch({
+            name: "bold",
+            displayName: "Bold",
+            value: true
+        }),
+        italic: new formattingSettings.ToggleSwitch({
+            name: "italic",
+            displayName: "Italic",
+            value: false
+        }),
+        underline: new formattingSettings.ToggleSwitch({
+            name: "underline",
+            displayName: "Underline",
+            value: false
+        })
+    });
+
+    public textColor = new formattingSettings.ColorPicker({
+        name: "textColor",
+        displayName: "Text color",
+        value: { value: "#1E2323" }
+    });
+    public backgroundColor = new formattingSettings.ColorPicker({
+        name: "backgroundColor",
+        displayName: "Background color",
+        value: { value: "#FFFFFF" }
+    });
+    public altTextColor = new formattingSettings.ColorPicker({
+        name: "altTextColor",
+        displayName: "Alternate text color",
+        value: { value: "#1E2323" }
+    });
+    public altBackgroundColor = new formattingSettings.ColorPicker({
+        name: "altBackgroundColor",
+        displayName: "Alternate background color",
+        value: { value: "#FFFFFF" }
+    });
+
+    public name: string = "valuesGroup";
+    public displayName: string = "Values";
+    public slices: FormattingSettingsSlice[] = [
+        this.font,
+        this.textColor,
+        this.backgroundColor,
+        this.altTextColor,
+        this.altBackgroundColor
+    ];
+}
+
+// --- Композитная карточка Values ---
+class ValuesCard extends FormattingSettingsCompositeCard {
+    public valuesGroup: ValuesGroup;
+    public groups: FormattingSettingsCard[];
+
+    public name: string = "values";
+    public displayName: string = "Values";
+
+    constructor() {
+        super();
+
+        this.valuesGroup = new ValuesGroup();
+        this.groups = [this.valuesGroup];
+    }
+}
+
 // --- Основная модель настроек ---
 export class VisualSettings extends FormattingSettingsModel {
     public subTotals: SubtotalsCard = new SubtotalsCard();
     public hideEmptyCols: HideEmptyColsCard = new HideEmptyColsCard();
     public grid: GridCard = new GridCard();
+    public values: ValuesCard = new ValuesCard();
 
     constructor() {
         super();
-        this.cards = [this.subTotals, this.hideEmptyCols, this.grid];
+        this.cards = [this.subTotals, this.hideEmptyCols, this.grid, this.values];
     }
 }

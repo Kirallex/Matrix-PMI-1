@@ -61,10 +61,28 @@ declare class GridCard extends FormattingSettingsCompositeCard {
     displayName: string;
     constructor();
 }
+declare class ValuesGroup extends FormattingSettingsCard {
+    font: formattingSettings.FontControl;
+    textColor: formattingSettings.ColorPicker;
+    backgroundColor: formattingSettings.ColorPicker;
+    altTextColor: formattingSettings.ColorPicker;
+    altBackgroundColor: formattingSettings.ColorPicker;
+    name: string;
+    displayName: string;
+    slices: FormattingSettingsSlice[];
+}
+declare class ValuesCard extends FormattingSettingsCompositeCard {
+    valuesGroup: ValuesGroup;
+    groups: FormattingSettingsCard[];
+    name: string;
+    displayName: string;
+    constructor();
+}
 export declare class VisualSettings extends FormattingSettingsModel {
     subTotals: SubtotalsCard;
     hideEmptyCols: HideEmptyColsCard;
     grid: GridCard;
+    values: ValuesCard;
     constructor();
 }
 export {};

@@ -12,21 +12,21 @@ export function applyGridSettings(container: HTMLElement, settings: VisualSettin
     // Глобальный размер шрифта – применяется только к th
     const fontSize = grid.optionsGroup.globalFontSize.value;
     if (fontSize) {
-        const baseFontSize = 20; // базовый размер шрифта в CSS
-        const baseHeight = 42;    // базовая высота ячеек
-        const baseLineHeight = 20; // базовый line-height
-        const scale = fontSize / baseFontSize;
+        const baseFontSize = 9; // базовый размер шрифта в CSS
+        // const baseHeight = 42;    // базовая высота ячеек
+        // const baseLineHeight = 20; // базовый line-height
+        // const scale = fontSize / baseFontSize;
 
-        const newHeight = Math.round(baseHeight * scale);
-        const newLineHeight = Math.round(baseLineHeight * scale);
+        // const newHeight = Math.round(baseHeight * scale);
+        // const newLineHeight = Math.round(baseLineHeight * scale);
 
         const thElements = table.querySelectorAll('th');
         thElements.forEach((th: HTMLElement) => {
-            th.style.fontSize = fontSize + 'px';
-            th.style.height = newHeight + 'px';
-            th.style.minHeight = newHeight + 'px';
-            th.style.maxHeight = newHeight + 'px';
-            th.style.lineHeight = newLineHeight + 'px';
+            th.style.setProperty('font-size', fontSize + 'px', 'important');
+            // th.style.height = newHeight + 'px';
+            // th.style.minHeight = newHeight + 'px';
+            // th.style.maxHeight = newHeight + 'px';
+            // th.style.lineHeight = newLineHeight + 'px';
         });
     }
 

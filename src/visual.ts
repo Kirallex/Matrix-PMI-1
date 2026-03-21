@@ -14,6 +14,7 @@ import { VisualSettings } from "./settings";
 import { MatrixEmptyColumnsHider } from "./hideEmptyCols";
 import VisualDataChangeOperationKind = powerbi.VisualDataChangeOperationKind;
 import { applyGridSettings } from "./gridSettings";
+import { applyValuesSettings } from "./valuesSettings";
 import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
 
 export class Visual implements IVisual {
@@ -196,6 +197,7 @@ export class Visual implements IVisual {
                 formattedMatrix.style.height = this.currentHeight + 'px';
             }
 
+            applyValuesSettings(formattedMatrix, this.settings);
             applyGridSettings(formattedMatrix, this.settings);
             this.target.appendChild(formattedMatrix);
 
@@ -414,7 +416,7 @@ export class Visual implements IVisual {
             const table = fullMatrix.querySelector('table');
             if (table) {
                 const downloader = new ExcelDownloader();
-                downloader.exportTable(table as HTMLElement, cntRows);
+                downloader.exportTable(table as HTMLElement);
             } else {
                 console.error("No table generated for export");
             }

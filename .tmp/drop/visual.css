@@ -48,7 +48,7 @@
   position: sticky !important;
   bottom: 0 !important;
   z-index: 1500 !important;
-  background-color: #66B0C2;
+  background-color: #7DC3D2;
 }
 .datagrid td {
   background-color: #FFFFFF;
@@ -61,9 +61,6 @@
 .datagrid th.rowsHeader,
 .datagrid .totalRow th.formatRowNodes,
 .datagrid .totalRow td {
-  height: 42px;
-  min-height: 42px;
-  max-height: 42px;
   padding: 10px 5px 11px 5px;
   line-height: 20px;
 }
@@ -93,7 +90,7 @@
   background-color: #F8F9FA;
 }
 .datagrid .totalRow {
-  background-color: #66B0C2 !important;
+  background-color: #7DC3D2 !important;
 }
 .datagrid .totalRow th,
 .datagrid .totalRow td {
@@ -120,7 +117,7 @@
   background-color: #FAFBFC;
 }
 .datagrid .totalRow td:empty {
-  background-color: #66B0C2 !important;
+  background-color: #7DC3D2 !important;
 }
 .datagrid td:not(:empty) {
   text-align: right;
@@ -143,7 +140,7 @@
   background-color: #F0F2F4;
 }
 .datagrid .midRow:nth-child(even).totalRow td {
-  background-color: #66B0C2 !important;
+  background-color: #7DC3D2 !important;
 }
 .datagrid th.formatRowNodes:not([style*="nbsp;"]) {
   font-size: 15px;
