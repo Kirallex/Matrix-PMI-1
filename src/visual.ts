@@ -66,28 +66,23 @@ export class Visual implements IVisual {
 
         // --- Логика автоматической загрузки всех сегментов (не для экспорта) ---
         if (!this.isExporting && !this.allDataLoaded) {
-            // Если ещё не начали загрузку, проверяем, есть ли сегменты
             if (!this.loadingAllData) {
                 if (this.currentDataView.metadata?.segment) {
                     console.log('Starting to load all data segments for display...');
                     this.loadingAllData = true;
                     this.requestNextDataSegment();
-                    // Не рендерим пока, ждём завершения
                     return;
                 } else {
-                    // Нет сегментов – все данные уже здесь
                     this.allDataLoaded = true;
                 }
             }
 
-            // Если мы в процессе загрузки и пришёл новый сегмент
             if (this.loadingAllData && options.operationKind === VisualDataChangeOperationKind.Append) {
                 console.log('Received next data segment, continuing...');
                 this.pendingRenderAfterLoad = true;
                 if (this.currentDataView.metadata?.segment) {
                     this.requestNextDataSegment();
                 } else {
-                    // Все данные получены
                     console.log('All data loaded.');
                     this.loadingAllData = false;
                     this.allDataLoaded = true;
@@ -99,19 +94,19 @@ export class Visual implements IVisual {
         }
 
         // --- Сброс состояний при изменении данных (не при Append) ---
-        if (options.operationKind !== VisualDataChangeOperationKind.Append && rowCount !== this.prevRowCount) {
-            console.log('!!! Clearing expandedNodes and columnWidths !!!');
+        if (options.operationKind === VisualDataChangeOperationKind.Create) {
+            console.log('New data set, clearing expandedNodes and columnWidths');
             this.expandedNodes.clear();
             this.columnWidths = {};
             this.prevRowCount = rowCount;
+        } else {
+            this.prevRowCount = rowCount;
         }
 
-        // --- Обработка экспорта (не мешает загрузке) ---
         if (this.isExporting) {
             this.handleDataSegment(this.currentDataView, rowCount);
         }
 
-        // Обычный рендеринг (если мы не в процессе загрузки всех данных)
         if (!this.loadingAllData) {
             this.renderVisualization(rowCount);
         }
@@ -203,11 +198,87 @@ export class Visual implements IVisual {
 
             applyGridSettings(formattedMatrix, this.settings);
             this.target.appendChild(formattedMatrix);
-            
+
             const table = formattedMatrix.querySelector('table');
             if (table) {
+                // --- Применяем сохранённые ширины для всех колонок (кроме первой), если они есть
+                if (Object.keys(this.columnWidths).length > 0) {
+                    for (let colIndex = 1; colIndex < table.rows[0]?.cells.length; colIndex++) {
+                        const width = this.columnWidths[colIndex];
+                        if (width) {
+                            for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
+                                const cell = table.rows[rowIndex].cells[colIndex];
+                                if (cell) {
+                                    cell.style.width = width + 'px';
+                                    cell.style.minWidth = width + 'px';
+                                    cell.style.maxWidth = width + 'px';
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // --- Обработка первого столбца
+                const firstColCells = table.querySelectorAll('tr > *:first-child');
+                if (firstColCells.length > 0) {
+                    if (this.columnWidths[0]) {
+                        // Применяем сохранённую (вручную изменённую) ширину первого столбца
+                        for (let i = 0; i < table.rows.length; i++) {
+                            const cell = table.rows[i].cells[0];
+                            if (cell) {
+                                const w = this.columnWidths[0];
+                                cell.style.width = w + 'px';
+                                cell.style.minWidth = w + 'px';
+                                cell.style.maxWidth = w + 'px';
+                            }
+                        }
+                    } else {
+                        // Подстраиваем ширину под содержимое
+                        firstColCells.forEach(cell => {
+                            (cell as HTMLElement).style.width = '';
+                            (cell as HTMLElement).style.minWidth = '';
+                            (cell as HTMLElement).style.maxWidth = '';
+                        });
+
+                        // Измеряем максимальную ширину текста
+                        const measureDiv = document.createElement('div');
+                        measureDiv.style.position = 'absolute';
+                        measureDiv.style.left = '-9999px';
+                        measureDiv.style.top = '-9999px';
+                        measureDiv.style.visibility = 'hidden';
+                        const sampleCell = firstColCells[0];
+                        const computedStyle = window.getComputedStyle(sampleCell);
+                        measureDiv.style.font = computedStyle.font;
+                        measureDiv.style.fontFamily = computedStyle.fontFamily;
+                        measureDiv.style.fontSize = computedStyle.fontSize;
+                        measureDiv.style.fontWeight = computedStyle.fontWeight;
+                        measureDiv.style.lineHeight = computedStyle.lineHeight;
+                        measureDiv.style.whiteSpace = 'nowrap';
+                        document.body.appendChild(measureDiv);
+
+                        let maxWidth = 0;
+                        firstColCells.forEach(cell => {
+                            const text = cell.textContent || '';
+                            measureDiv.textContent = text;
+                            const w = measureDiv.offsetWidth;
+                            if (w > maxWidth) maxWidth = w;
+                        });
+                        document.body.removeChild(measureDiv);
+
+                        maxWidth += 20; // небольшой запас
+
+                        for (let i = 0; i < table.rows.length; i++) {
+                            const cell = table.rows[i].cells[0];
+                            if (cell) {
+                                cell.style.minWidth = maxWidth + 'px';
+                            }
+                        }
+                    }
+                }
+
+                // --- Инициализация начальных ширин для остальных колонок (если ещё не заданы)
                 if (Object.keys(this.columnWidths).length === 0) {
-                    for (let colIndex = 0; colIndex < table.rows[0]?.cells.length; colIndex++) {
+                    for (let colIndex = 1; colIndex < table.rows[0]?.cells.length; colIndex++) {
                         const cell = table.rows[0].cells[colIndex];
                         if (cell) {
                             const width = cell.offsetWidth;
@@ -215,6 +286,7 @@ export class Visual implements IVisual {
                         }
                     }
                 }
+                // Применяем ширины (для всех колонок, у которых есть сохранённое значение)
                 this.applyColumnWidths(table);
             }
 
@@ -237,6 +309,7 @@ export class Visual implements IVisual {
 
             if (table) {
                 ColumnResizer.init(table, (colIndex: number, newWidth: number) => {
+                    // Сохраняем ширину для любого столбца (включая первый)
                     this.columnWidths[colIndex] = newWidth;
                 });
             }
@@ -247,6 +320,7 @@ export class Visual implements IVisual {
     }
 
     private applyColumnWidths(table: HTMLTableElement): void {
+        // Применяем сохранённые ширины для всех колонок, у которых есть значение
         for (let colIndex = 0; colIndex < table.rows[0]?.cells.length; colIndex++) {
             const width = this.columnWidths[colIndex];
             if (width) {
@@ -273,12 +347,9 @@ export class Visual implements IVisual {
             this.exportButton.textContent = "Loading data...";
         }
 
-        // При экспорте используем уже загруженные данные, не запрашиваем новые сегменты
-        // Если данные ещё не полностью загружены, экспортируем то, что есть (но кнопка может быть нажата до завершения)
         this.exportDataView(cntRows);
     }
 
-    // Этот метод больше не используется для экспорта, оставлен для совместимости, но можно удалить
     private requestMoreData(cntRows: number): void {
         try {
             console.log("Requesting more data via fetchMoreData(true)...");
@@ -292,7 +363,6 @@ export class Visual implements IVisual {
     }
 
     private handleDataSegment(dataView: DataView, cntRows: number): void {
-        // Этот метод не используется при новом подходе (экспорт из полных данных), оставлен для обратной совместимости
         console.log(`[handleDataSegment] received. segment: ${dataView.metadata?.segment ? 'YES' : 'NO'}`);
         const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size;
         if (dataView.metadata?.segment) {
@@ -315,7 +385,6 @@ export class Visual implements IVisual {
             return;
         }
 
-        // Создаём временный скрытый контейнер
         const tempContainer = document.createElement('div');
         tempContainer.style.position = 'absolute';
         tempContainer.style.left = '-9999px';
@@ -325,19 +394,16 @@ export class Visual implements IVisual {
 
         try {
             const valueSources = (this.currentDataView.matrix as any).valueSources;
-            // Получаем значение настройки nonGrandTotal (показывать промежуточные субтоталы или нет)
             const showNonGrandTotal = this.settings.subTotals.nonGrandTotal?.value ?? true;
 
-            // Генерируем полную таблицу (forceExpandAll = true)
             const fullMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
                 this.currentDataView.matrix,
                 valueSources,
-                this.expandedNodes, // не используется при forceExpandAll
+                this.expandedNodes,
                 showNonGrandTotal,
                 true // forceExpandAll
             );
 
-            // Применяем те же настройки (скрытие пустых колонок, настройки сетки)
             if (this.settings?.hideEmptyCols?.hideColsLabel?.value) {
                 this.applyHideEmptyColumnsSetting(fullMatrix);
             }
@@ -345,7 +411,6 @@ export class Visual implements IVisual {
 
             tempContainer.appendChild(fullMatrix);
 
-            // Экспортируем таблицу
             const table = fullMatrix.querySelector('table');
             if (table) {
                 const downloader = new ExcelDownloader();
@@ -356,7 +421,6 @@ export class Visual implements IVisual {
         } catch (error) {
             console.error("Export failed:", error);
         } finally {
-            // Удаляем временный контейнер
             document.body.removeChild(tempContainer);
             this.resetExportState();
         }

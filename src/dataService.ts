@@ -12,7 +12,7 @@ export class SimpleDataService {
         
         const rowCount = dataView.matrix?.rows?.root?.children?.length || 0;
         //console.log('Data check:', { rowCount, hostMethods: Object.keys(host) });
-        console.log("host", host)
+        //console.log("host", host)
         
         // Просто возвращаем текущий dataView
         return {
