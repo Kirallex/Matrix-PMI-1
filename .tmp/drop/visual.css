@@ -90,7 +90,7 @@
   background-color: #F8F9FA;
 }
 .datagrid .totalRow {
-  background-color: #7DC3D2 !important;
+  background-color: #FFFFFF !important;
 }
 .datagrid .totalRow th,
 .datagrid .totalRow td {
@@ -104,13 +104,13 @@
   border-right: 2px solid #ffffff;
 }
 .datagrid .totalColumn {
-  background-color: #66B0C2;
+  background-color: #FFFFFF;
   color: #FFFFFF !important;
   font-weight: bold !important;
   border-color: #ffffff;
 }
 .datagrid .totalColumn.formatColumnNodes {
-  background-color: #66B0C2;
+  background-color: #FFFFFF;
   color: #FFFFFF !important;
 }
 .datagrid td:empty {

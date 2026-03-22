@@ -18,6 +18,7 @@ import { applyValuesSettings } from "./valuesSettings";
 import { applyColumnHeadersSettings } from "./columnHeadersSettings";
 import { applyRowHeadersSettings } from "./rowHeaderSettings";
 import { applyColumnGrandTotalSettings } from "./columnGrandTotalSettings";
+import { applyRowGrandTotalSettings } from "./rowGrandTotalSettings";
 import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
 
 export class Visual implements IVisual {
@@ -207,6 +208,7 @@ export class Visual implements IVisual {
             if (this.settings.subTotals.columnSubtotals.value) {
                 applyColumnGrandTotalSettings(formattedMatrix, this.settings);
             }
+            applyRowGrandTotalSettings(formattedMatrix, this.settings);
             this.target.appendChild(formattedMatrix);
 
             const table = formattedMatrix.querySelector('table');

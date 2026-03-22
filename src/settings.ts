@@ -507,6 +507,82 @@ class ColumnGrandTotalCard extends FormattingSettingsCompositeCard {
 
 
 
+class RowGrandTotalGroup extends FormattingSettingsCard {
+    public font = new formattingSettings.FontControl({
+        name: "font",
+        displayName: "Font",
+        fontFamily: new formattingSettings.FontPicker({
+            name: "fontFamily",
+            value: "Segoe UI"
+        }),
+        fontSize: new formattingSettings.NumUpDown({
+            name: "fontSize",
+            displayName: "Size",
+            value: 9,
+            options: { minValue: 8, maxValue: 72, step: 1 } as any
+        }),
+        bold: new formattingSettings.ToggleSwitch({
+            name: "bold",
+            displayName: "Bold",
+            value: true
+        }),
+        italic: new formattingSettings.ToggleSwitch({
+            name: "italic",
+            displayName: "Italic",
+            value: false
+        }),
+        underline: new formattingSettings.ToggleSwitch({
+            name: "underline",
+            displayName: "Underline",
+            value: false
+        })
+    });
+
+    public textColor = new formattingSettings.ColorPicker({
+        name: "textColor",
+        displayName: "Text color",
+        value: { value: "#1E2323" }
+    });
+
+    public backgroundColor = new formattingSettings.ColorPicker({
+        name: "backgroundColor",
+        displayName: "Background color",
+        value: { value: "#FFFFFF" }
+    });
+
+    public applyToLabels = new formattingSettings.ToggleSwitch({
+        name: "applyToLabels",
+        displayName: "Apply to labels",
+        value: false
+    });
+
+    public name: string = "rowGrandTotalGroup";
+    public displayName: string = "Values";
+    public slices: FormattingSettingsSlice[] = [
+        this.font,
+        this.textColor,
+        this.backgroundColor,
+        this.applyToLabels
+    ];
+}
+
+// --- Композитная карточка Row Grand Total ---
+class RowGrandTotalCard extends FormattingSettingsCompositeCard {
+    public rowGrandTotalGroup: RowGrandTotalGroup;
+    public groups: FormattingSettingsCard[];
+
+    public name: string = "rowGrandTotal";
+    public displayName: string = "Row grand total";
+
+    constructor() {
+        super();
+        this.rowGrandTotalGroup = new RowGrandTotalGroup();
+        this.groups = [this.rowGrandTotalGroup];
+    }
+}
+
+
+
 
 // --- Основная модель настроек ---
 export class VisualSettings extends FormattingSettingsModel {
@@ -517,6 +593,7 @@ export class VisualSettings extends FormattingSettingsModel {
     public columnHeaders: ColumnHeadersCard = new ColumnHeadersCard();
     public rowHeaders: RowHeadersCard = new RowHeadersCard();
     public columnGrandTotal: ColumnGrandTotalCard = new ColumnGrandTotalCard();
+    public rowGrandTotal: RowGrandTotalCard = new RowGrandTotalCard();
 
     constructor() {
         super();
@@ -527,7 +604,8 @@ export class VisualSettings extends FormattingSettingsModel {
             this.values, 
             this.columnHeaders, 
             this.rowHeaders,
-            this.columnGrandTotal
+            this.columnGrandTotal,
+            this.rowGrandTotal
         ];
 
     }
