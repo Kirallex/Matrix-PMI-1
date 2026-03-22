@@ -95,12 +95,29 @@ declare class ColumnHeadersCard extends FormattingSettingsCompositeCard {
     displayName: string;
     constructor();
 }
+declare class RowHeadersGroup extends FormattingSettingsCard {
+    font: formattingSettings.FontControl;
+    textColor: formattingSettings.ColorPicker;
+    backgroundColor: formattingSettings.ColorPicker;
+    textAlignment: formattingSettings.AlignmentGroup;
+    name: string;
+    displayName: string;
+    slices: FormattingSettingsSlice[];
+}
+declare class RowHeadersCard extends FormattingSettingsCompositeCard {
+    rowHeadersGroup: RowHeadersGroup;
+    groups: FormattingSettingsCard[];
+    name: string;
+    displayName: string;
+    constructor();
+}
 export declare class VisualSettings extends FormattingSettingsModel {
     subTotals: SubtotalsCard;
     hideEmptyCols: HideEmptyColsCard;
     grid: GridCard;
     values: ValuesCard;
     columnHeaders: ColumnHeadersCard;
+    rowHeaders: RowHeadersCard;
     constructor();
 }
 export {};

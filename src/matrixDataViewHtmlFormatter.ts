@@ -205,7 +205,6 @@ export class MatrixDataviewHtmlFormatter {
 
         const level = (root.level !== undefined && root.level !== null) ? root.level : -1;
 
-        // Пропускаем промежуточные субтоталы, если они отключены
         if (root.isSubtotal && level !== 0 && !showNonGrandTotal) {
             return;
         }
@@ -218,7 +217,7 @@ export class MatrixDataviewHtmlFormatter {
             thElement.setAttribute('class', 'formatRowNodes');
             thElement.style.textAlign = 'left';
 
-            // Отступы – создаём отдельный текстовый узел
+            // Отступы
             let indentText = "";
             for (let i = 0; i < level; i++) {
                 indentText += '\u00A0\u00A0\u00A0\u00A0';
@@ -231,7 +230,7 @@ export class MatrixDataviewHtmlFormatter {
             // Значение ячейки (без отступов)
             let displayValue = "";
             if (root.isSubtotal) {
-                displayValue = "Totals";
+                displayValue = "Total";
             } else if (root.levelSourceIndex !== undefined) {
                 displayValue = root.levelSourceIndex.value !== undefined ?
                     root.levelSourceIndex.value :
@@ -240,7 +239,7 @@ export class MatrixDataviewHtmlFormatter {
                 displayValue = root.value !== undefined ? root.value : "";
             }
 
-            // Кнопка раскрытия, если есть дети
+            // Кнопка раскрытия
             const hasChildren = root.children && root.children.length > 0 && !root.isSubtotal;
             if (hasChildren) {
                 const expandBtn = document.createElement('span');
@@ -249,16 +248,20 @@ export class MatrixDataviewHtmlFormatter {
                 expandBtn.innerHTML = '';
                 expandBtn.insertAdjacentHTML('beforeend', expandedNodes?.has(path) ? minusIcon : plusIcon);
                 thElement.appendChild(expandBtn);
-                // Фиксированный пробел после кнопки (два неразрывных пробела)
+                // Фиксированный пробел после кнопки
                 const spaceNode = document.createTextNode('\u00A0\u00A0');
                 thElement.appendChild(spaceNode);
             }
 
+            // Текст оборачиваем в span для независимого выравнивания
+            const textSpan = document.createElement('span');
+            textSpan.className = 'row-header-text';
             const textNode = document.createTextNode(displayValue);
-            thElement.appendChild(textNode);
+            textSpan.appendChild(textNode);
+            thElement.appendChild(textSpan);
+
             trElement.appendChild(thElement);
 
-            // Класс строки
             if (root.isSubtotal) {
                 trElement.classList.add('totalRow');
             } else {
@@ -267,7 +270,6 @@ export class MatrixDataviewHtmlFormatter {
 
             // Ячейки данных
             const columnCount = columnSourceIndices ? columnSourceIndices.length : 0;
-
             if (root.values && !(root.children && root.children.length > 0 && !root.isSubtotal)) {
                 this.addDataCells(trElement, root.values, columns, valueSources, columnSourceIndices);
             } else if (root.children && root.children.length > 0) {
@@ -275,7 +277,6 @@ export class MatrixDataviewHtmlFormatter {
                 if (subtotalChild && subtotalChild.values) {
                     this.addDataCells(trElement, subtotalChild.values, columns, valueSources, columnSourceIndices);
                 } else {
-                    // Нет данных – добавляем пустые ячейки для сохранения структуры
                     for (let i = 0; i < columnCount; i++) {
                         const tdElement = document.createElement('td');
                         tdElement.setAttribute('id', i.toString());
@@ -283,7 +284,6 @@ export class MatrixDataviewHtmlFormatter {
                     }
                 }
             } else {
-                // Нет детей и нет значений – всё равно добавляем пустые ячейки
                 for (let i = 0; i < columnCount; i++) {
                     const tdElement = document.createElement('td');
                     tdElement.setAttribute('id', i.toString());
@@ -294,7 +294,7 @@ export class MatrixDataviewHtmlFormatter {
             topElement.appendChild(trElement);
         }
 
-        // Обработка детей
+        // Рекурсивный обход детей
         if (root.children && root.children.length > 0 && !root.isSubtotal) {
             const showChildren = forceExpandAll || (level === -1) || (expandedNodes?.has(path) === true);
             if (showChildren) {

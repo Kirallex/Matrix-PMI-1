@@ -16,6 +16,7 @@ import VisualDataChangeOperationKind = powerbi.VisualDataChangeOperationKind;
 import { applyGridSettings } from "./gridSettings";
 import { applyValuesSettings } from "./valuesSettings";
 import { applyColumnHeadersSettings } from "./columnHeadersSettings";
+import { applyRowHeadersSettings } from "./rowHeaderSettings";
 import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
 
 export class Visual implements IVisual {
@@ -198,9 +199,11 @@ export class Visual implements IVisual {
                 formattedMatrix.style.height = this.currentHeight + 'px';
             }
 
+            applyGridSettings(formattedMatrix, this.settings);
             applyValuesSettings(formattedMatrix, this.settings);
             applyColumnHeadersSettings(formattedMatrix, this.settings);
-            applyGridSettings(formattedMatrix, this.settings);
+            applyRowHeadersSettings(formattedMatrix, this.settings);
+            
             this.target.appendChild(formattedMatrix);
 
             const table = formattedMatrix.querySelector('table');

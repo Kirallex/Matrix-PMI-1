@@ -354,6 +354,83 @@ class ColumnHeadersCard extends FormattingSettingsCompositeCard {
 }
 
 
+class RowHeadersGroup extends FormattingSettingsCard {
+    public font = new formattingSettings.FontControl({
+        name: "font",
+        displayName: "Font",
+        fontFamily: new formattingSettings.FontPicker({
+            name: "fontFamily",
+            value: "Segoe UI"
+        }),
+        fontSize: new formattingSettings.NumUpDown({
+            name: "fontSize",
+            displayName: "Size",
+            value: 9,
+            options: { minValue: 8, maxValue: 72, step: 1 } as any
+        }),
+        bold: new formattingSettings.ToggleSwitch({
+            name: "bold",
+            displayName: "Bold",
+            value: true
+        }),
+        italic: new formattingSettings.ToggleSwitch({
+            name: "italic",
+            displayName: "Italic",
+            value: false
+        }),
+        underline: new formattingSettings.ToggleSwitch({
+            name: "underline",
+            displayName: "Underline",
+            value: false
+        })
+    });
+
+    public textColor = new formattingSettings.ColorPicker({
+        name: "textColor",
+        displayName: "Text color",
+        value: { value: "#1E2323" }
+    });
+
+    public backgroundColor = new formattingSettings.ColorPicker({
+        name: "backgroundColor",
+        displayName: "Background color",
+        value: { value: "#FFFFFF" }
+    });
+
+    // Выравнивание заголовков (кнопки)
+    public textAlignment = new formattingSettings.AlignmentGroup({
+        name: "textAlignment",
+        displayName: "Alignment",
+        value: "left",
+        mode: powerbi.visuals.AlignmentGroupMode.Horizonal
+    });
+
+    public name: string = "rowHeadersGroup";
+    public displayName: string = "Text";
+    public slices: FormattingSettingsSlice[] = [
+        this.font,
+        this.textColor,
+        this.backgroundColor,
+        this.textAlignment
+    ];
+}
+
+// --- Композитная карточка Row Headers ---
+class RowHeadersCard extends FormattingSettingsCompositeCard {
+    public rowHeadersGroup: RowHeadersGroup;
+    public groups: FormattingSettingsCard[];
+
+    public name: string = "rowHeaders";
+    public displayName: string = "Row Headers";
+
+    constructor() {
+        super();
+
+        this.rowHeadersGroup = new RowHeadersGroup();
+        this.groups = [this.rowHeadersGroup];
+    }
+}
+
 
 
 // --- Основная модель настроек ---
@@ -363,9 +440,10 @@ export class VisualSettings extends FormattingSettingsModel {
     public grid: GridCard = new GridCard();
     public values: ValuesCard = new ValuesCard();
     public columnHeaders: ColumnHeadersCard = new ColumnHeadersCard();
+    public rowHeaders: RowHeadersCard = new RowHeadersCard();
 
     constructor() {
         super();
-        this.cards = [this.subTotals, this.hideEmptyCols, this.grid, this.values, this.columnHeaders];
+        this.cards = [this.subTotals, this.hideEmptyCols, this.grid, this.values, this.columnHeaders, this.rowHeaders];
     }
 }
