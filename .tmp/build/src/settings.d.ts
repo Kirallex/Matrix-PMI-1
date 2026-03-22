@@ -111,6 +111,22 @@ declare class RowHeadersCard extends FormattingSettingsCompositeCard {
     displayName: string;
     constructor();
 }
+declare class ColumnGrandTotalGroup extends FormattingSettingsCard {
+    font: formattingSettings.FontControl;
+    textColor: formattingSettings.ColorPicker;
+    backgroundColor: formattingSettings.ColorPicker;
+    applyToLabels: formattingSettings.ToggleSwitch;
+    name: string;
+    displayName: string;
+    slices: FormattingSettingsSlice[];
+}
+declare class ColumnGrandTotalCard extends FormattingSettingsCompositeCard {
+    columnGrandTotalGroup: ColumnGrandTotalGroup;
+    groups: FormattingSettingsCard[];
+    name: string;
+    displayName: string;
+    constructor();
+}
 export declare class VisualSettings extends FormattingSettingsModel {
     subTotals: SubtotalsCard;
     hideEmptyCols: HideEmptyColsCard;
@@ -118,6 +134,7 @@ export declare class VisualSettings extends FormattingSettingsModel {
     values: ValuesCard;
     columnHeaders: ColumnHeadersCard;
     rowHeaders: RowHeadersCard;
+    columnGrandTotal: ColumnGrandTotalCard;
     constructor();
 }
 export {};

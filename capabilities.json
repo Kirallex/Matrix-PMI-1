@@ -206,7 +206,20 @@
                 "backgroundColor": { "type": { "fill": { "solid": { "color": true } } } },
                 "textAlignment": { "type": { "enumeration": [] } }
             }
+        },
+        "columnGrandTotal": {
+        "displayName": "Column grand total",
+        "properties": {
+            "fontFamily": { "type": { "formatting": { "fontFamily": true } } },
+            "fontSize": { "type": { "formatting": { "fontSize": true } } },
+            "bold": { "type": { "bool": true } },
+            "italic": { "type": { "bool": true } },
+            "underline": { "type": { "bool": true } },
+            "textColor": { "type": { "fill": { "solid": { "color": true } } } },
+            "backgroundColor": { "type": { "fill": { "solid": { "color": true } } } },
+            "applyToLabels": { "type": { "bool": true } }
         }
+}
     },
     "subtotals": {
         "matrix": {
