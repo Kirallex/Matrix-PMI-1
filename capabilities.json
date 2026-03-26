@@ -233,6 +233,19 @@
             "backgroundColor": { "type": { "fill": { "solid": { "color": true } } } },
             "applyToLabels": { "type": { "bool": true } }
         }
+    },
+    "specificColumn": {
+        "displayName": "Specific column",
+        "properties": {
+        "series": { "type": { "text": true } },
+            "applyToHeader": { "type": { "bool": true } },
+            "applyToTotal": { "type": { "bool": true } },
+            "applyToValues": { "type": { "bool": true } },
+            "textColor": { "type": { "fill": { "solid": { "color": true } } } },
+            "backgroundColor": { "type": { "fill": { "solid": { "color": true } } } },
+            "alignment": { "type": { "enumeration": [] } },
+            "width": { "type": { "numeric": true } }
+        }
     }
     },
     "subtotals": {

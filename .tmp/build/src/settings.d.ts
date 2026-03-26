@@ -143,6 +143,31 @@ declare class RowGrandTotalCard extends FormattingSettingsCompositeCard {
     displayName: string;
     constructor();
 }
+declare class SpecificColumnApplyGroup extends FormattingSettingsCard {
+    measuresGroup: formattingSettings.ItemDropdown;
+    applyToHeader: formattingSettings.ToggleSwitch;
+    applyToTotal: formattingSettings.ToggleSwitch;
+    applyToValues: formattingSettings.ToggleSwitch;
+    name: string;
+    displayName: string;
+    slices: FormattingSettingsSlice[];
+}
+declare class SpecificColumnValuesGroup extends FormattingSettingsCard {
+    textColor: formattingSettings.ColorPicker;
+    backgroundColor: formattingSettings.ColorPicker;
+    alignment: formattingSettings.AlignmentGroup;
+    name: string;
+    displayName: string;
+    slices: FormattingSettingsSlice[];
+}
+declare class SpecificColumnCard extends FormattingSettingsCompositeCard {
+    applyGroup: SpecificColumnApplyGroup;
+    valuesGroup: SpecificColumnValuesGroup;
+    groups: FormattingSettingsCard[];
+    name: string;
+    displayName: string;
+    constructor();
+}
 export declare class VisualSettings extends FormattingSettingsModel {
     subTotals: SubtotalsCard;
     hideEmptyCols: HideEmptyColsCard;
@@ -152,6 +177,7 @@ export declare class VisualSettings extends FormattingSettingsModel {
     rowHeaders: RowHeadersCard;
     columnGrandTotal: ColumnGrandTotalCard;
     rowGrandTotal: RowGrandTotalCard;
+    specificColumn: SpecificColumnCard;
     constructor();
 }
 export {};

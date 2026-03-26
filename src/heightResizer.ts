@@ -30,7 +30,7 @@ export class HeightResizer {
         `;
         container.appendChild(this.handle);
 
-        console.log('HeightResizer: handle created', this.handle);
+        //console.log('HeightResizer: handle created', this.handle);
 
         this.handle.addEventListener('mousedown', this.onMouseDown);
         document.addEventListener('mousemove', this.onMouseMove);
@@ -45,7 +45,7 @@ export class HeightResizer {
         this.startHeight = this.container.offsetHeight;
         document.body.style.cursor = 'ns-resize';
         document.body.style.userSelect = 'none';
-        console.log('HeightResizer: mousedown', this.startY, this.startHeight);
+        //console.log('HeightResizer: mousedown', this.startY, this.startHeight);
     };
 
     private static onMouseMove = (e: MouseEvent): void => {
@@ -56,7 +56,7 @@ export class HeightResizer {
         if (this.onResizeCallback) {
             this.onResizeCallback(newHeight);
         }
-        console.log('HeightResizer: mousemove', newHeight);
+        //console.log('HeightResizer: mousemove', newHeight);
     };
 
     private static onMouseUp = (e: MouseEvent): void => {
@@ -64,7 +64,7 @@ export class HeightResizer {
             this.resizing = false;
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
-            console.log('HeightResizer: mouseup');
+            //console.log('HeightResizer: mouseup');
         }
     };
 

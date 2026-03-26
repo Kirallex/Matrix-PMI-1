@@ -19,9 +19,12 @@ export declare class Visual implements IVisual {
     private loadingAllData;
     private allDataLoaded;
     private pendingRenderAfterLoad;
+    private measureNames;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
     getFormattingModel(): powerbi.visuals.FormattingModel;
+    private updateMeasuresDropdown;
+    private applySpecificColumnStyles;
     private requestNextDataSegment;
     private countRows;
     private renderVisualization;

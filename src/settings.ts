@@ -582,6 +582,98 @@ class RowGrandTotalCard extends FormattingSettingsCompositeCard {
 }
 
 
+class SpecificColumnApplyGroup extends FormattingSettingsCard {
+    public measuresGroup = new formattingSettings.ItemDropdown({
+        name: "series",
+        displayName: "Series",
+        items: Array.from({ length: 30 }, (_, i) => ({
+            value: `measure${i}`,
+            displayName: `Measure ${i}`,
+            visible: false // изначально скрыты
+        })), 
+        value: null
+    });
+    public applyToHeader = new formattingSettings.ToggleSwitch({
+        name: "applyToHeader",
+        displayName: "Apply to header",
+        value: false
+    });
+
+    public applyToTotal = new formattingSettings.ToggleSwitch({
+        name: "applyToTotal",
+        displayName: "Apply to total",
+        value: false
+    });
+    public applyToValues = new formattingSettings.ToggleSwitch({
+        name: "applyToValues",
+        displayName: "Apply to values",
+        value: false
+    });
+    public name: string = "specificColumnApplyGroup";
+    public displayName: string = "Apply settings to";
+    public slices: FormattingSettingsSlice[] = [
+        this.measuresGroup,
+        this.applyToHeader,
+        //this.applyToSubtotals,
+        this.applyToTotal,
+        this.applyToValues
+    ];
+}
+ 
+// --- Группа Values (Specific column) 
+class SpecificColumnValuesGroup extends FormattingSettingsCard {
+    public textColor = new formattingSettings.ColorPicker({
+        name: "textColor",
+        displayName: "Text color",
+        value: { value: "#1E2323" }
+    });
+    public backgroundColor = new formattingSettings.ColorPicker({
+        name: "backgroundColor",
+        displayName: "Background color",
+        value: { value: "#FFFFFF" }
+    });
+    public alignment = new formattingSettings.AlignmentGroup({
+        name: "alignment",
+        displayName: "Alignment",
+        value: "left",
+        mode: powerbi.visuals.AlignmentGroupMode.Horizonal
+    });
+
+    // public width = new formattingSettings.NumUpDown({
+    //     name: "width",
+    //     displayName: "Width",
+    //     value: 80,
+    //     options: { minValue: 20, maxValue: 500, step: 1 } as any
+    // });
+    public name: string = "specificColumnValuesGroup";
+    public displayName: string = "Values";
+    public slices: FormattingSettingsSlice[] = [
+        this.textColor,
+        this.backgroundColor,
+        this.alignment
+        //this.width
+    ];
+}
+
+
+// --- Композитная карточка Specific column ---
+class SpecificColumnCard extends FormattingSettingsCompositeCard {
+    public applyGroup: SpecificColumnApplyGroup;
+    public valuesGroup: SpecificColumnValuesGroup;
+    public groups: FormattingSettingsCard[];
+
+    public name: string = "specificColumn";
+    public displayName: string = "Specific column";
+
+    constructor() {
+        super();
+        this.applyGroup = new SpecificColumnApplyGroup();
+        this.valuesGroup = new SpecificColumnValuesGroup();
+        this.groups = [this.applyGroup, this.valuesGroup];
+    }
+}
+
+
 
 
 // --- Основная модель настроек ---
@@ -594,6 +686,7 @@ export class VisualSettings extends FormattingSettingsModel {
     public rowHeaders: RowHeadersCard = new RowHeadersCard();
     public columnGrandTotal: ColumnGrandTotalCard = new ColumnGrandTotalCard();
     public rowGrandTotal: RowGrandTotalCard = new RowGrandTotalCard();
+    public specificColumn: SpecificColumnCard = new SpecificColumnCard();
 
     constructor() {
         super();
@@ -605,7 +698,8 @@ export class VisualSettings extends FormattingSettingsModel {
             this.columnHeaders, 
             this.rowHeaders,
             this.columnGrandTotal,
-            this.rowGrandTotal
+            this.rowGrandTotal,
+            this.specificColumn
         ];
 
     }

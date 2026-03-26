@@ -20,6 +20,7 @@ import { applyRowHeadersSettings } from "./rowHeaderSettings";
 import { applyColumnGrandTotalSettings } from "./columnGrandTotalSettings";
 import { applyRowGrandTotalSettings } from "./rowGrandTotalSettings";
 import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
+import { applySpecificColumnSettings } from "./specificColumnSettings";
 
 export class Visual implements IVisual {
     private target: HTMLElement;
@@ -35,10 +36,11 @@ export class Visual implements IVisual {
     private currentHeight: number | null = null;
     private formattingSettingsService: FormattingSettingsService;
 
-    // Флаги для загрузки всех данных при старте
     private loadingAllData: boolean = false;
     private allDataLoaded: boolean = false;
     private pendingRenderAfterLoad: boolean = false;
+
+    private measureNames: string[] = [];
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
@@ -58,18 +60,25 @@ export class Visual implements IVisual {
             VisualSettings,
             options.dataViews[0]
         ) as VisualSettings;
-        console.log('this.settings.grid:', this.settings.grid);
+
+        // Получаем имена мер
+        const measures = this.currentDataView?.matrix?.columns?.levels?.find(level =>
+            level.sources.some(source => source.isMeasure)
+        )?.sources || [];
+        this.measureNames = measures.map(m => m.displayName);
+
+        // Обновляем выпадающий список
+        this.updateMeasuresDropdown();
 
         const rowCount = this.countRows(this.currentDataView);
         console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
 
-        // Если это новый набор данных (например, изменились фильтры) – сбрасываем флаги загрузки
         if (options.operationKind === VisualDataChangeOperationKind.Create) {
             this.allDataLoaded = false;
             this.loadingAllData = false;
         }
 
-        // --- Логика автоматической загрузки всех сегментов (не для экспорта) ---
+        // Автозагрузка сегментов
         if (!this.isExporting && !this.allDataLoaded) {
             if (!this.loadingAllData) {
                 if (this.currentDataView.metadata?.segment) {
@@ -98,7 +107,6 @@ export class Visual implements IVisual {
             }
         }
 
-        // --- Сброс состояний при изменении данных (не при Append) ---
         if (options.operationKind === VisualDataChangeOperationKind.Create) {
             console.log('New data set, clearing expandedNodes and columnWidths');
             this.expandedNodes.clear();
@@ -114,6 +122,7 @@ export class Visual implements IVisual {
 
         if (!this.loadingAllData) {
             this.renderVisualization(rowCount);
+            this.applySpecificColumnStyles();
         }
 
         if (this.pendingExport) {
@@ -123,7 +132,46 @@ export class Visual implements IVisual {
     }
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
+        this.updateMeasuresDropdown();
         return this.formattingSettingsService.buildFormattingModel(this.settings);
+    }
+
+    private updateMeasuresDropdown(): void {
+        const dropdown = this.settings.specificColumn?.applyGroup?.measuresGroup;
+        if (!dropdown) return;
+
+        const items = dropdown.items as { value: string; displayName: string; visible: boolean }[];
+        if (!items) return;
+
+        // Сначала скрываем все элементы
+        for (let i = 0; i < items.length; i++) {
+            items[i].visible = false;
+        }
+
+        // Затем показываем и переименовываем реальные меры
+        for (let i = 0; i < this.measureNames.length && i < items.length; i++) {
+            items[i].visible = true;
+            items[i].displayName = this.measureNames[i];
+        }
+
+        // Принудительно обновляем items, чтобы изменения применились в панели форматирования
+        dropdown.items = [...items];
+
+        // Проверяем, существует ли выбранное значение
+        const currentValue = dropdown.value;
+        if (currentValue && typeof currentValue.value === 'string') {
+            const selectedItemExists = items.some(item => item.visible && item.value === currentValue.value);
+            if (!selectedItemExists) {
+                dropdown.value = null;
+            }
+        }
+    }
+
+    private applySpecificColumnStyles(): void {
+        const grid = this.target.querySelector('.datagrid');
+        if (grid) {
+            applySpecificColumnSettings(grid as HTMLElement, this.settings);
+        }
     }
 
     private requestNextDataSegment(): void {
@@ -213,7 +261,6 @@ export class Visual implements IVisual {
 
             const table = formattedMatrix.querySelector('table');
             if (table) {
-                // --- Применяем сохранённые ширины для всех колонок (кроме первой), если они есть
                 if (Object.keys(this.columnWidths).length > 0) {
                     for (let colIndex = 1; colIndex < table.rows[0]?.cells.length; colIndex++) {
                         const width = this.columnWidths[colIndex];
@@ -230,11 +277,9 @@ export class Visual implements IVisual {
                     }
                 }
 
-                // --- Обработка первого столбца
                 const firstColCells = table.querySelectorAll('tr > *:first-child');
                 if (firstColCells.length > 0) {
                     if (this.columnWidths[0]) {
-                        // Применяем сохранённую (вручную изменённую) ширину первого столбца
                         for (let i = 0; i < table.rows.length; i++) {
                             const cell = table.rows[i].cells[0];
                             if (cell) {
@@ -245,14 +290,12 @@ export class Visual implements IVisual {
                             }
                         }
                     } else {
-                        // Подстраиваем ширину под содержимое
                         firstColCells.forEach(cell => {
                             (cell as HTMLElement).style.width = '';
                             (cell as HTMLElement).style.minWidth = '';
                             (cell as HTMLElement).style.maxWidth = '';
                         });
 
-                        // Измеряем максимальную ширину текста
                         const measureDiv = document.createElement('div');
                         measureDiv.style.position = 'absolute';
                         measureDiv.style.left = '-9999px';
@@ -276,8 +319,7 @@ export class Visual implements IVisual {
                             if (w > maxWidth) maxWidth = w;
                         });
                         document.body.removeChild(measureDiv);
-
-                        maxWidth += 20; // небольшой запас
+                        maxWidth += 20;
 
                         for (let i = 0; i < table.rows.length; i++) {
                             const cell = table.rows[i].cells[0];
@@ -288,7 +330,6 @@ export class Visual implements IVisual {
                     }
                 }
 
-                // --- Инициализация начальных ширин для остальных колонок (если ещё не заданы)
                 if (Object.keys(this.columnWidths).length === 0) {
                     for (let colIndex = 1; colIndex < table.rows[0]?.cells.length; colIndex++) {
                         const cell = table.rows[0].cells[colIndex];
@@ -298,7 +339,6 @@ export class Visual implements IVisual {
                         }
                     }
                 }
-                // Применяем ширины (для всех колонок, у которых есть сохранённое значение)
                 this.applyColumnWidths(table);
             }
 
@@ -321,7 +361,6 @@ export class Visual implements IVisual {
 
             if (table) {
                 ColumnResizer.init(table, (colIndex: number, newWidth: number) => {
-                    // Сохраняем ширину для любого столбца (включая первый)
                     this.columnWidths[colIndex] = newWidth;
                 });
             }
@@ -332,7 +371,6 @@ export class Visual implements IVisual {
     }
 
     private applyColumnWidths(table: HTMLTableElement): void {
-        // Применяем сохранённые ширины для всех колонок, у которых есть значение
         for (let colIndex = 0; colIndex < table.rows[0]?.cells.length; colIndex++) {
             const width = this.columnWidths[colIndex];
             if (width) {
@@ -350,15 +388,12 @@ export class Visual implements IVisual {
 
     private handleExportClick(cntRows: number): void {
         if (this.isExporting) return;
-
         console.log("=== Starting data export process ===");
         this.isExporting = true;
-
         if (this.exportButton) {
             this.exportButton.disabled = true;
             this.exportButton.textContent = "Loading data...";
         }
-
         this.exportDataView(cntRows);
     }
 
@@ -390,39 +425,32 @@ export class Visual implements IVisual {
 
     private exportDataView(cntRows: number): void {
         console.log("Exporting data with all nodes expanded...");
-
         if (!this.currentDataView) {
             console.error("No data view found");
             this.resetExportState();
             return;
         }
-
         const tempContainer = document.createElement('div');
         tempContainer.style.position = 'absolute';
         tempContainer.style.left = '-9999px';
         tempContainer.style.top = '-9999px';
         tempContainer.style.visibility = 'hidden';
         document.body.appendChild(tempContainer);
-
         try {
             const valueSources = (this.currentDataView.matrix as any).valueSources;
             const showNonGrandTotal = this.settings.subTotals.nonGrandTotal?.value ?? true;
-
             const fullMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
                 this.currentDataView.matrix,
                 valueSources,
                 this.expandedNodes,
                 showNonGrandTotal,
-                true // forceExpandAll
+                true
             );
-
             if (this.settings?.hideEmptyCols?.hideColsLabel?.value) {
                 this.applyHideEmptyColumnsSetting(fullMatrix);
             }
             applyGridSettings(fullMatrix, this.settings);
-
             tempContainer.appendChild(fullMatrix);
-
             const table = fullMatrix.querySelector('table');
             if (table) {
                 const downloader = new ExcelDownloader();
