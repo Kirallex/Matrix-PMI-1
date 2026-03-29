@@ -588,7 +588,7 @@ class SpecificColumnApplyGroup extends FormattingSettingsCard {
         displayName: "Series",
         items: Array.from({ length: 30 }, (_, i) => ({
             value: `measure${i}`,
-            displayName: `Measure ${i}`,
+            displayName: '', //`Measure ${i}`,
             visible: false // изначально скрыты
         })), 
         value: null
@@ -639,19 +639,13 @@ class SpecificColumnValuesGroup extends FormattingSettingsCard {
         mode: powerbi.visuals.AlignmentGroupMode.Horizonal
     });
 
-    // public width = new formattingSettings.NumUpDown({
-    //     name: "width",
-    //     displayName: "Width",
-    //     value: 80,
-    //     options: { minValue: 20, maxValue: 500, step: 1 } as any
-    // });
+
     public name: string = "specificColumnValuesGroup";
     public displayName: string = "Values";
     public slices: FormattingSettingsSlice[] = [
         this.textColor,
         this.backgroundColor,
         this.alignment
-        //this.width
     ];
 }
 

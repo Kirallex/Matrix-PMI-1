@@ -28,3 +28,11 @@ export interface IDataCell {
     isSubtotal: boolean;
     valueSourceIndex?: number;
 }
+export interface IMeasureSettings {
+    applyToHeader: boolean;
+    applyToTotal: boolean;
+    applyToValues: boolean;
+    textColor: string;
+    backgroundColor: string;
+    alignment: string;
+}

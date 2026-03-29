@@ -21,6 +21,7 @@ import { applyColumnGrandTotalSettings } from "./columnGrandTotalSettings";
 import { applyRowGrandTotalSettings } from "./rowGrandTotalSettings";
 import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
 import { applySpecificColumnSettings } from "./specificColumnSettings";
+import { IMeasureSettings } from "./matrixDataInterfaces";
 
 export class Visual implements IVisual {
     private target: HTMLElement;
@@ -35,12 +36,12 @@ export class Visual implements IVisual {
     private columnWidths: { [colIndex: number]: number } = {};
     private currentHeight: number | null = null;
     private formattingSettingsService: FormattingSettingsService;
-
     private loadingAllData: boolean = false;
     private allDataLoaded: boolean = false;
     private pendingRenderAfterLoad: boolean = false;
-
     private measureNames: string[] = [];
+    private measureSettings: Map<string, IMeasureSettings> = new Map();
+    private lastSelectedMeasure: string | null = null;
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
@@ -61,14 +62,10 @@ export class Visual implements IVisual {
             options.dataViews[0]
         ) as VisualSettings;
 
-        // Получаем имена мер
         const measures = this.currentDataView?.matrix?.columns?.levels?.find(level =>
             level.sources.some(source => source.isMeasure)
         )?.sources || [];
         this.measureNames = measures.map(m => m.displayName);
-
-        // Обновляем выпадающий список
-        this.updateMeasuresDropdown();
 
         const rowCount = this.countRows(this.currentDataView);
         console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
@@ -78,7 +75,6 @@ export class Visual implements IVisual {
             this.loadingAllData = false;
         }
 
-        // Автозагрузка сегментов
         if (!this.isExporting && !this.allDataLoaded) {
             if (!this.loadingAllData) {
                 if (this.currentDataView.metadata?.segment) {
@@ -121,6 +117,7 @@ export class Visual implements IVisual {
         }
 
         if (!this.loadingAllData) {
+            this.saveCurrentMeasureSettings();
             this.renderVisualization(rowCount);
             this.applySpecificColumnStyles();
         }
@@ -133,6 +130,7 @@ export class Visual implements IVisual {
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
         this.updateMeasuresDropdown();
+        this.restoreSettingsForSelectedMeasure();
         return this.formattingSettingsService.buildFormattingModel(this.settings);
     }
 
@@ -140,37 +138,92 @@ export class Visual implements IVisual {
         const dropdown = this.settings.specificColumn?.applyGroup?.measuresGroup;
         if (!dropdown) return;
 
-        const items = dropdown.items as { value: string; displayName: string; visible: boolean }[];
+        let items = dropdown.items as { value: string; displayName: string; visible: boolean }[];
         if (!items) return;
 
-        // Сначала скрываем все элементы
+        // Скрываем все элементы сначала
         for (let i = 0; i < items.length; i++) {
             items[i].visible = false;
         }
 
-        // Затем показываем и переименовываем реальные меры
+        // Показываем только реальные меры (по количеству actual measureNames)
         for (let i = 0; i < this.measureNames.length && i < items.length; i++) {
             items[i].visible = true;
             items[i].displayName = this.measureNames[i];
         }
 
-        // Принудительно обновляем items, чтобы изменения применились в панели форматирования
-        dropdown.items = [...items];
+        //items = items.slice(0, this.measureNames.length);
 
-        // Проверяем, существует ли выбранное значение
-        const currentValue = dropdown.value;
-        if (currentValue && typeof currentValue.value === 'string') {
-            const selectedItemExists = items.some(item => item.visible && item.value === currentValue.value);
+        // Обновляем items
+        dropdown.items = [...items.slice(0, this.measureNames.length)];
+
+        // Проверяем текущее значение dropdown
+        if (dropdown.value && typeof dropdown.value.value === 'string') {
+            const selectedItemExists = items.some(item => item.visible && item.value === dropdown.value.value);
             if (!selectedItemExists) {
+                // Если выбранного элемента нет среди видимых, сбрасываем
                 dropdown.value = null;
+                this.lastSelectedMeasure = null;
+            } else {
+                this.lastSelectedMeasure = dropdown.value.value;
+            }
+        } else if (this.lastSelectedMeasure) {
+            // Восстанавливаем последний выбор если есть
+            const savedItem = items.find(item => item.visible && item.value === this.lastSelectedMeasure);
+            if (savedItem) {
+                dropdown.value = { value: savedItem.value, displayName: savedItem.displayName };
+            }
+        } else if (this.measureNames.length > 0) {
+            // Первый выбор - первая видимая метрика
+            const firstVisibleItem = items.find(item => item.visible);
+            if (firstVisibleItem) {
+                dropdown.value = { value: firstVisibleItem.value, displayName: firstVisibleItem.displayName };
+                this.lastSelectedMeasure = firstVisibleItem.value;
             }
         }
+    }
+
+    private restoreSettingsForSelectedMeasure(): void {
+        const dropdown = this.settings.specificColumn?.applyGroup?.measuresGroup;
+        if (!dropdown || !dropdown.value || typeof dropdown.value.value !== 'string') return;
+
+        const measureKey = dropdown.value.value;
+        const savedSettings = this.measureSettings.get(measureKey);
+
+        if (savedSettings) {
+            this.settings.specificColumn.valuesGroup.textColor.value.value = savedSettings.textColor;
+            this.settings.specificColumn.valuesGroup.backgroundColor.value.value = savedSettings.backgroundColor;
+            this.settings.specificColumn.valuesGroup.alignment.value = savedSettings.alignment;
+            this.settings.specificColumn.applyGroup.applyToHeader.value = savedSettings.applyToHeader;
+            this.settings.specificColumn.applyGroup.applyToTotal.value = savedSettings.applyToTotal;
+            this.settings.specificColumn.applyGroup.applyToValues.value = savedSettings.applyToValues;
+        }
+    }
+
+    private saveCurrentMeasureSettings(): void {
+        const dropdown = this.settings.specificColumn?.applyGroup?.measuresGroup;
+        if (!dropdown || !dropdown.value || typeof dropdown.value.value !== 'string') return;
+
+        const measureKey = dropdown.value.value;
+        const specific = this.settings.specificColumn;
+        if (!specific) return;
+
+        this.measureSettings.set(measureKey, {
+            textColor: specific.valuesGroup.textColor.value.value,
+            backgroundColor: specific.valuesGroup.backgroundColor.value.value,
+            alignment: specific.valuesGroup.alignment.value,
+            applyToHeader: specific.applyGroup.applyToHeader.value,
+            applyToTotal: specific.applyGroup.applyToTotal.value,
+            applyToValues: specific.applyGroup.applyToValues.value
+        });
     }
 
     private applySpecificColumnStyles(): void {
         const grid = this.target.querySelector('.datagrid');
         if (grid) {
-            applySpecificColumnSettings(grid as HTMLElement, this.settings);
+            for (const [measureKey, settings] of this.measureSettings.entries()) {
+                applySpecificColumnSettings(grid as HTMLElement, settings, measureKey);
+            }
         }
     }
 
@@ -187,7 +240,7 @@ export class Visual implements IVisual {
                 }
             }
         } catch (error) {
-            console.error('Error fetching more data:', error);
+            console.error('Error fetching more ', error);
             this.loadingAllData = false;
             this.allDataLoaded = true;
         }
@@ -210,14 +263,12 @@ export class Visual implements IVisual {
         if (!this.exportButton) {
             const buttonContainer = document.createElement('div');
             buttonContainer.className = 'export-button-container';
-            
             this.exportButton = document.createElement('button');
             this.exportButton.id = "exportBtn";
             this.exportButton.type = "button";
             this.exportButton.className = "export-button";
             this.exportButton.textContent = "Export Data";
             this.exportButton.addEventListener('click', () => this.handleExportClick(cntRows));
-            
             buttonContainer.appendChild(this.exportButton);
             this.target.prepend(buttonContainer);
         }
@@ -231,7 +282,6 @@ export class Visual implements IVisual {
 
         if (this.currentDataView?.matrix) {
             const valueSources = (this.currentDataView.matrix as any).valueSources;
-
             const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
                 this.currentDataView.matrix,
                 valueSources,
@@ -244,7 +294,7 @@ export class Visual implements IVisual {
 
             this.applyGrandTotalSetting(formattedMatrix);
             this.applyNonGrandTotalSetting(formattedMatrix);
-            
+
             if (this.currentHeight) {
                 formattedMatrix.style.height = this.currentHeight + 'px';
             }
@@ -253,10 +303,13 @@ export class Visual implements IVisual {
             applyValuesSettings(formattedMatrix, this.settings);
             applyColumnHeadersSettings(formattedMatrix, this.settings);
             applyRowHeadersSettings(formattedMatrix, this.settings);
+
             if (this.settings.subTotals.columnSubtotals.value) {
                 applyColumnGrandTotalSettings(formattedMatrix, this.settings);
             }
+
             applyRowGrandTotalSettings(formattedMatrix, this.settings);
+
             this.target.appendChild(formattedMatrix);
 
             const table = formattedMatrix.querySelector('table');
@@ -301,6 +354,7 @@ export class Visual implements IVisual {
                         measureDiv.style.left = '-9999px';
                         measureDiv.style.top = '-9999px';
                         measureDiv.style.visibility = 'hidden';
+
                         const sampleCell = firstColCells[0];
                         const computedStyle = window.getComputedStyle(sampleCell);
                         measureDiv.style.font = computedStyle.font;
@@ -309,6 +363,7 @@ export class Visual implements IVisual {
                         measureDiv.style.fontWeight = computedStyle.fontWeight;
                         measureDiv.style.lineHeight = computedStyle.lineHeight;
                         measureDiv.style.whiteSpace = 'nowrap';
+
                         document.body.appendChild(measureDiv);
 
                         let maxWidth = 0;
@@ -318,6 +373,7 @@ export class Visual implements IVisual {
                             const w = measureDiv.offsetWidth;
                             if (w > maxWidth) maxWidth = w;
                         });
+
                         document.body.removeChild(measureDiv);
                         maxWidth += 20;
 
@@ -339,6 +395,7 @@ export class Visual implements IVisual {
                         }
                     }
                 }
+
                 this.applyColumnWidths(table);
             }
 
@@ -364,6 +421,7 @@ export class Visual implements IVisual {
                     this.columnWidths[colIndex] = newWidth;
                 });
             }
+
             HeightResizer.init(formattedMatrix, (newHeight: number) => {
                 this.currentHeight = newHeight;
             });
@@ -430,12 +488,14 @@ export class Visual implements IVisual {
             this.resetExportState();
             return;
         }
+
         const tempContainer = document.createElement('div');
         tempContainer.style.position = 'absolute';
         tempContainer.style.left = '-9999px';
         tempContainer.style.top = '-9999px';
         tempContainer.style.visibility = 'hidden';
         document.body.appendChild(tempContainer);
+
         try {
             const valueSources = (this.currentDataView.matrix as any).valueSources;
             const showNonGrandTotal = this.settings.subTotals.nonGrandTotal?.value ?? true;
@@ -446,11 +506,15 @@ export class Visual implements IVisual {
                 showNonGrandTotal,
                 true
             );
+
             if (this.settings?.hideEmptyCols?.hideColsLabel?.value) {
                 this.applyHideEmptyColumnsSetting(fullMatrix);
             }
+
             applyGridSettings(fullMatrix, this.settings);
+
             tempContainer.appendChild(fullMatrix);
+
             const table = fullMatrix.querySelector('table');
             if (table) {
                 const downloader = new ExcelDownloader();
