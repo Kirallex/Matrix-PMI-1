@@ -1,19 +1,14 @@
+import { IMeasureSettings } from "./measureSettings";
+
 export function applySpecificColumnSettings(
     container: HTMLElement,
-    settings: {
-        textColor: string;
-        backgroundColor: string;
-        alignment: string;
-        applyToHeader: boolean;
-        applyToTotal: boolean;
-        applyToValues: boolean;
-    },
+    settings: IMeasureSettings,
     measureKey: string
 ): void {
     const table = container.querySelector('table');
     if (!table) return;
 
-    const measureIndexMatch = measureKey.match(/measure(\d+)/);
+    const measureIndexMatch = measureKey.match(/measure_(\d+)/);
     if (!measureIndexMatch) return;
 
     const measureIndex = parseInt(measureIndexMatch[1], 10);
@@ -30,7 +25,6 @@ export function applySpecificColumnSettings(
             break;
         }
     }
-
     if (columnIndex === -1) return;
 
     const applyStyles = (cellElement: HTMLElement) => {

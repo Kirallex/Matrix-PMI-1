@@ -20,14 +20,10 @@ export declare class Visual implements IVisual {
     private allDataLoaded;
     private pendingRenderAfterLoad;
     private measureNames;
-    private measureSettings;
-    private lastSelectedMeasure;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
     getFormattingModel(): powerbi.visuals.FormattingModel;
-    private updateMeasuresDropdown;
-    private restoreSettingsForSelectedMeasure;
-    private saveCurrentMeasureSettings;
+    private updateMeasureGroups;
     private applySpecificColumnStyles;
     private requestNextDataSegment;
     private countRows;

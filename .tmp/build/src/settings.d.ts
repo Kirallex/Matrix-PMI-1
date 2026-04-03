@@ -143,27 +143,8 @@ declare class RowGrandTotalCard extends FormattingSettingsCompositeCard {
     displayName: string;
     constructor();
 }
-declare class SpecificColumnApplyGroup extends FormattingSettingsCard {
-    measuresGroup: formattingSettings.ItemDropdown;
-    applyToHeader: formattingSettings.ToggleSwitch;
-    applyToTotal: formattingSettings.ToggleSwitch;
-    applyToValues: formattingSettings.ToggleSwitch;
-    name: string;
-    displayName: string;
-    slices: FormattingSettingsSlice[];
-}
-declare class SpecificColumnValuesGroup extends FormattingSettingsCard {
-    textColor: formattingSettings.ColorPicker;
-    backgroundColor: formattingSettings.ColorPicker;
-    alignment: formattingSettings.AlignmentGroup;
-    name: string;
-    displayName: string;
-    slices: FormattingSettingsSlice[];
-}
-declare class SpecificColumnCard extends FormattingSettingsCompositeCard {
-    applyGroup: SpecificColumnApplyGroup;
-    valuesGroup: SpecificColumnValuesGroup;
-    groups: FormattingSettingsCard[];
+declare class SpecificColumnCard extends formattingSettings.CompositeCard {
+    groups: formattingSettings.Cards[];
     name: string;
     displayName: string;
     constructor();

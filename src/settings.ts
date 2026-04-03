@@ -582,23 +582,12 @@ class RowGrandTotalCard extends FormattingSettingsCompositeCard {
 }
 
 
-class SpecificColumnApplyGroup extends FormattingSettingsCard {
-    public measuresGroup = new formattingSettings.ItemDropdown({
-        name: "series",
-        displayName: "Series",
-        items: Array.from({ length: 30 }, (_, i) => ({
-            value: `measure${i}`,
-            displayName: '', //`Measure ${i}`,
-            visible: false // изначально скрыты
-        })), 
-        value: null
-    });
+class MeasureSettingsGroup extends formattingSettings.SimpleCard {
     public applyToHeader = new formattingSettings.ToggleSwitch({
         name: "applyToHeader",
         displayName: "Apply to header",
         value: false
     });
-
     public applyToTotal = new formattingSettings.ToggleSwitch({
         name: "applyToTotal",
         displayName: "Apply to total",
@@ -609,19 +598,6 @@ class SpecificColumnApplyGroup extends FormattingSettingsCard {
         displayName: "Apply to values",
         value: false
     });
-    public name: string = "specificColumnApplyGroup";
-    public displayName: string = "Apply settings to";
-    public slices: FormattingSettingsSlice[] = [
-        this.measuresGroup,
-        this.applyToHeader,
-        //this.applyToSubtotals,
-        this.applyToTotal,
-        this.applyToValues
-    ];
-}
- 
-// --- Группа Values (Specific column) 
-class SpecificColumnValuesGroup extends FormattingSettingsCard {
     public textColor = new formattingSettings.ColorPicker({
         name: "textColor",
         displayName: "Text color",
@@ -638,32 +614,37 @@ class SpecificColumnValuesGroup extends FormattingSettingsCard {
         value: "left",
         mode: powerbi.visuals.AlignmentGroupMode.Horizonal
     });
+    // public name: string;
+    // public displayName: string;
 
-
-    public name: string = "specificColumnValuesGroup";
-    public displayName: string = "Values";
-    public slices: FormattingSettingsSlice[] = [
-        this.textColor,
-        this.backgroundColor,
-        this.alignment
-    ];
+    constructor(name: string, displayName: string) {
+        super();
+        this.name = name;
+        this.displayName = displayName;
+        this.slices = [
+            this.applyToHeader,
+            this.applyToTotal,
+            this.applyToValues,
+            this.textColor,
+            this.backgroundColor,
+            this.alignment
+        ];
+    }
 }
 
-
-// --- Композитная карточка Specific column ---
-class SpecificColumnCard extends FormattingSettingsCompositeCard {
-    public applyGroup: SpecificColumnApplyGroup;
-    public valuesGroup: SpecificColumnValuesGroup;
-    public groups: FormattingSettingsCard[];
-
+// --- Карточка Specific column с 30 группами ---
+class SpecificColumnCard extends formattingSettings.CompositeCard {
+    public groups: formattingSettings.Cards[];
     public name: string = "specificColumn";
     public displayName: string = "Specific column";
 
     constructor() {
         super();
-        this.applyGroup = new SpecificColumnApplyGroup();
-        this.valuesGroup = new SpecificColumnValuesGroup();
-        this.groups = [this.applyGroup, this.valuesGroup];
+        const groups: MeasureSettingsGroup[] = [];
+        for (let i = 0; i < 30; i++) {
+            groups.push(new MeasureSettingsGroup(`measure_${i}`, `Measure ${i + 1}`));
+        }
+        this.groups = groups;
     }
 }
 

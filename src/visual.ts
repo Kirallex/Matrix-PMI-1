@@ -20,8 +20,8 @@ import { applyRowHeadersSettings } from "./rowHeaderSettings";
 import { applyColumnGrandTotalSettings } from "./columnGrandTotalSettings";
 import { applyRowGrandTotalSettings } from "./rowGrandTotalSettings";
 import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
+import { IMeasureSettings } from "./measureSettings";
 import { applySpecificColumnSettings } from "./specificColumnSettings";
-import { IMeasureSettings } from "./matrixDataInterfaces";
 
 export class Visual implements IVisual {
     private target: HTMLElement;
@@ -36,12 +36,12 @@ export class Visual implements IVisual {
     private columnWidths: { [colIndex: number]: number } = {};
     private currentHeight: number | null = null;
     private formattingSettingsService: FormattingSettingsService;
+
     private loadingAllData: boolean = false;
     private allDataLoaded: boolean = false;
     private pendingRenderAfterLoad: boolean = false;
+
     private measureNames: string[] = [];
-    private measureSettings: Map<string, IMeasureSettings> = new Map();
-    private lastSelectedMeasure: string | null = null;
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
@@ -62,10 +62,14 @@ export class Visual implements IVisual {
             options.dataViews[0]
         ) as VisualSettings;
 
+        // Получаем реальные имена мер
         const measures = this.currentDataView?.matrix?.columns?.levels?.find(level =>
             level.sources.some(source => source.isMeasure)
         )?.sources || [];
         this.measureNames = measures.map(m => m.displayName);
+
+        // Обновляем видимость и имена групп в specificColumn (с сохранением значений)
+        this.updateMeasureGroups();
 
         const rowCount = this.countRows(this.currentDataView);
         console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
@@ -75,6 +79,7 @@ export class Visual implements IVisual {
             this.loadingAllData = false;
         }
 
+        // Автозагрузка сегментов (без изменений)
         if (!this.isExporting && !this.allDataLoaded) {
             if (!this.loadingAllData) {
                 if (this.currentDataView.metadata?.segment) {
@@ -117,7 +122,6 @@ export class Visual implements IVisual {
         }
 
         if (!this.loadingAllData) {
-            this.saveCurrentMeasureSettings();
             this.renderVisualization(rowCount);
             this.applySpecificColumnStyles();
         }
@@ -129,101 +133,71 @@ export class Visual implements IVisual {
     }
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
-        this.updateMeasuresDropdown();
-        this.restoreSettingsForSelectedMeasure();
+        this.updateMeasureGroups();
         return this.formattingSettingsService.buildFormattingModel(this.settings);
     }
 
-    private updateMeasuresDropdown(): void {
-        const dropdown = this.settings.specificColumn?.applyGroup?.measuresGroup;
-        if (!dropdown) return;
+    private updateMeasureGroups(): void {
+        const groups = this.settings.specificColumn.groups as any[];
+        if (!groups) return;
 
-        let items = dropdown.items as { value: string; displayName: string; visible: boolean }[];
-        if (!items) return;
-
-        // Скрываем все элементы сначала
-        for (let i = 0; i < items.length; i++) {
-            items[i].visible = false;
+        // Сохраняем текущие значения всех групп
+        const savedSettings: any = {};
+        for (let i = 0; i < groups.length; i++) {
+            const g = groups[i];
+            savedSettings[i] = {
+                applyToHeader: g.applyToHeader.value,
+                applyToTotal: g.applyToTotal.value,
+                applyToValues: g.applyToValues.value,
+                textColor: g.textColor.value.value,
+                backgroundColor: g.backgroundColor.value.value,
+                alignment: g.alignment.value
+            };
         }
 
-        // Показываем только реальные меры (по количеству actual measureNames)
-        for (let i = 0; i < this.measureNames.length && i < items.length; i++) {
-            items[i].visible = true;
-            items[i].displayName = this.measureNames[i];
+        // Скрываем все группы
+        for (let i = 0; i < groups.length; i++) {
+            groups[i].visible = false;
         }
 
-        //items = items.slice(0, this.measureNames.length);
+        // Показываем и переименовываем группы для реальных мер
+        for (let i = 0; i < this.measureNames.length && i < groups.length; i++) {
+            groups[i].visible = true;
+            groups[i].displayName = this.measureNames[i];
+        }
 
-        // Обновляем items
-        dropdown.items = [...items.slice(0, this.measureNames.length)];
-
-        // Проверяем текущее значение dropdown
-        if (dropdown.value && typeof dropdown.value.value === 'string') {
-            const selectedItemExists = items.some(item => item.visible && item.value === dropdown.value.value);
-            if (!selectedItemExists) {
-                // Если выбранного элемента нет среди видимых, сбрасываем
-                dropdown.value = null;
-                this.lastSelectedMeasure = null;
-            } else {
-                this.lastSelectedMeasure = dropdown.value.value;
-            }
-        } else if (this.lastSelectedMeasure) {
-            // Восстанавливаем последний выбор если есть
-            const savedItem = items.find(item => item.visible && item.value === this.lastSelectedMeasure);
-            if (savedItem) {
-                dropdown.value = { value: savedItem.value, displayName: savedItem.displayName };
-            }
-        } else if (this.measureNames.length > 0) {
-            // Первый выбор - первая видимая метрика
-            const firstVisibleItem = items.find(item => item.visible);
-            if (firstVisibleItem) {
-                dropdown.value = { value: firstVisibleItem.value, displayName: firstVisibleItem.displayName };
-                this.lastSelectedMeasure = firstVisibleItem.value;
+        // Восстанавливаем сохранённые значения
+        for (let i = 0; i < groups.length; i++) {
+            if (savedSettings[i]) {
+                groups[i].applyToHeader.value = savedSettings[i].applyToHeader;
+                groups[i].applyToTotal.value = savedSettings[i].applyToTotal;
+                groups[i].applyToValues.value = savedSettings[i].applyToValues;
+                groups[i].textColor.value.value = savedSettings[i].textColor;
+                groups[i].backgroundColor.value.value = savedSettings[i].backgroundColor;
+                groups[i].alignment.value = savedSettings[i].alignment;
             }
         }
-    }
-
-    private restoreSettingsForSelectedMeasure(): void {
-        const dropdown = this.settings.specificColumn?.applyGroup?.measuresGroup;
-        if (!dropdown || !dropdown.value || typeof dropdown.value.value !== 'string') return;
-
-        const measureKey = dropdown.value.value;
-        const savedSettings = this.measureSettings.get(measureKey);
-
-        if (savedSettings) {
-            this.settings.specificColumn.valuesGroup.textColor.value.value = savedSettings.textColor;
-            this.settings.specificColumn.valuesGroup.backgroundColor.value.value = savedSettings.backgroundColor;
-            this.settings.specificColumn.valuesGroup.alignment.value = savedSettings.alignment;
-            this.settings.specificColumn.applyGroup.applyToHeader.value = savedSettings.applyToHeader;
-            this.settings.specificColumn.applyGroup.applyToTotal.value = savedSettings.applyToTotal;
-            this.settings.specificColumn.applyGroup.applyToValues.value = savedSettings.applyToValues;
-        }
-    }
-
-    private saveCurrentMeasureSettings(): void {
-        const dropdown = this.settings.specificColumn?.applyGroup?.measuresGroup;
-        if (!dropdown || !dropdown.value || typeof dropdown.value.value !== 'string') return;
-
-        const measureKey = dropdown.value.value;
-        const specific = this.settings.specificColumn;
-        if (!specific) return;
-
-        this.measureSettings.set(measureKey, {
-            textColor: specific.valuesGroup.textColor.value.value,
-            backgroundColor: specific.valuesGroup.backgroundColor.value.value,
-            alignment: specific.valuesGroup.alignment.value,
-            applyToHeader: specific.applyGroup.applyToHeader.value,
-            applyToTotal: specific.applyGroup.applyToTotal.value,
-            applyToValues: specific.applyGroup.applyToValues.value
-        });
     }
 
     private applySpecificColumnStyles(): void {
         const grid = this.target.querySelector('.datagrid');
-        if (grid) {
-            for (const [measureKey, settings] of this.measureSettings.entries()) {
-                applySpecificColumnSettings(grid as HTMLElement, settings, measureKey);
-            }
+        if (!grid) return;
+
+        const groups = this.settings.specificColumn.groups as any[];
+        for (let i = 0; i < groups.length; i++) {
+            const group = groups[i];
+            if (!group.visible) continue;
+
+            const settings: IMeasureSettings = {
+                textColor: group.textColor.value.value,
+                backgroundColor: group.backgroundColor.value.value,
+                alignment: group.alignment.value,
+                applyToHeader: group.applyToHeader.value,
+                applyToTotal: group.applyToTotal.value,
+                applyToValues: group.applyToValues.value
+            };
+            const measureKey = `measure_${i}`;
+            applySpecificColumnSettings(grid as HTMLElement, settings, measureKey);
         }
     }
 
