@@ -23,14 +23,7 @@ export declare class Visual implements IVisual {
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
     getFormattingModel(): powerbi.visuals.FormattingModel;
-    /**
-     * Обновляет группы в SpecificColumn в соответствии с реальными именами мер.
-     * Вызывается из update() и getFormattingModel().
-     */
-    private updateSpecificColumnGroups;
-    /**
-     * Применяет стили для каждой меры (Header, Total, Values) к отрисованной таблице.
-     */
+    private updateMeasureGroups;
     private applySpecificColumnStyles;
     private requestNextDataSegment;
     private countRows;

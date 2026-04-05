@@ -10,7 +10,6 @@ import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructor
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import DataView = powerbi.DataView;
 import Host = powerbi.extensibility.visual.IVisualHost;
-import { VisualSettings } from "./settings";
 import { MatrixEmptyColumnsHider } from "./hideEmptyCols";
 import VisualDataChangeOperationKind = powerbi.VisualDataChangeOperationKind;
 import { applyGridSettings } from "./gridSettings";
@@ -22,12 +21,13 @@ import { applyRowGrandTotalSettings } from "./rowGrandTotalSettings";
 import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
 import { IMeasureSettings } from "./measureSettings";
 import { applySpecificColumnSettings } from "./specificColumnSettings";
+import { VisualSettings, MeasureCard } from "./settings";
 
 export class Visual implements IVisual {
     private target: HTMLElement;
     private settings: VisualSettings;
     private host: Host;
-    private currentDataView: DataView;
+    private currentDataView!: DataView;
     private exportButton: HTMLButtonElement | null = null;
     private isExporting: boolean = false;
     private pendingExport: boolean = false;
@@ -68,8 +68,8 @@ export class Visual implements IVisual {
         )?.sources || [];
         this.measureNames = measures.map(m => m.displayName);
 
-        // Обновляем видимость и имена групп в specificColumn (с сохранением значений)
-        this.updateMeasureGroups();
+        // Обновляем структуру SpecificColumn (динамические группы)
+        this.updateSpecificColumnGroups();
 
         const rowCount = this.countRows(this.currentDataView);
         console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
@@ -79,11 +79,11 @@ export class Visual implements IVisual {
             this.loadingAllData = false;
         }
 
-        // Автозагрузка сегментов (без изменений)
+        // Автозагрузка сегментов
         if (!this.isExporting && !this.allDataLoaded) {
             if (!this.loadingAllData) {
                 if (this.currentDataView.metadata?.segment) {
-                    console.log('Starting to load all data segments for display...');
+                    //console.log('Starting to load all data segments for display...');
                     this.loadingAllData = true;
                     this.requestNextDataSegment();
                     return;
@@ -93,12 +93,12 @@ export class Visual implements IVisual {
             }
 
             if (this.loadingAllData && options.operationKind === VisualDataChangeOperationKind.Append) {
-                console.log('Received next data segment, continuing...');
+                //console.log('Received next data segment, continuing...');
                 this.pendingRenderAfterLoad = true;
                 if (this.currentDataView.metadata?.segment) {
                     this.requestNextDataSegment();
                 } else {
-                    console.log('All data loaded.');
+                    //console.log('All data loaded.');
                     this.loadingAllData = false;
                     this.allDataLoaded = true;
                     this.renderVisualization(this.countRows(this.currentDataView));
@@ -109,7 +109,7 @@ export class Visual implements IVisual {
         }
 
         if (options.operationKind === VisualDataChangeOperationKind.Create) {
-            console.log('New data set, clearing expandedNodes and columnWidths');
+            //console.log('New data set, clearing expandedNodes and columnWidths');
             this.expandedNodes.clear();
             this.columnWidths = {};
             this.prevRowCount = rowCount;
@@ -123,7 +123,7 @@ export class Visual implements IVisual {
 
         if (!this.loadingAllData) {
             this.renderVisualization(rowCount);
-            this.applySpecificColumnStyles();
+            //this.applySpecificColumnStyles();
         }
 
         if (this.pendingExport) {
@@ -133,71 +133,80 @@ export class Visual implements IVisual {
     }
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
-        this.updateMeasureGroups();
-        return this.formattingSettingsService.buildFormattingModel(this.settings);
-    }
-
-    private updateMeasureGroups(): void {
-        const groups = this.settings.specificColumn.groups as any[];
-        if (!groups) return;
-
-        // Сохраняем текущие значения всех групп
-        const savedSettings: any = {};
-        for (let i = 0; i < groups.length; i++) {
-            const g = groups[i];
-            savedSettings[i] = {
-                applyToHeader: g.applyToHeader.value,
-                applyToTotal: g.applyToTotal.value,
-                applyToValues: g.applyToValues.value,
-                textColor: g.textColor.value.value,
-                backgroundColor: g.backgroundColor.value.value,
-                alignment: g.alignment.value
-            };
-        }
-
-        // Скрываем все группы
-        for (let i = 0; i < groups.length; i++) {
-            groups[i].visible = false;
-        }
-
-        // Показываем и переименовываем группы для реальных мер
-        for (let i = 0; i < this.measureNames.length && i < groups.length; i++) {
-            groups[i].visible = true;
-            groups[i].displayName = this.measureNames[i];
-        }
-
-        // Восстанавливаем сохранённые значения
-        for (let i = 0; i < groups.length; i++) {
-            if (savedSettings[i]) {
-                groups[i].applyToHeader.value = savedSettings[i].applyToHeader;
-                groups[i].applyToTotal.value = savedSettings[i].applyToTotal;
-                groups[i].applyToValues.value = savedSettings[i].applyToValues;
-                groups[i].textColor.value.value = savedSettings[i].textColor;
-                groups[i].backgroundColor.value.value = savedSettings[i].backgroundColor;
-                groups[i].alignment.value = savedSettings[i].alignment;
-            }
+        try {
+            this.updateSpecificColumnGroups();
+            const model = this.formattingSettingsService.buildFormattingModel(this.settings);
+            return model;
+        } catch (err) {
+            console.error("Error in getFormattingModel:", err);
+            return { cards: [] };
         }
     }
 
+    /**
+     * Обновляет группы в SpecificColumn в соответствии с реальными именами мер.
+     * Вызывается из update() и getFormattingModel().
+     */
+    private updateSpecificColumnGroups(): void {
+        // Вызываем метод updateGroups у specificColumn, который перестраивает карточки
+        (this.settings.specificColumn as any).updateGroups(this.measureNames);
+    }
+
+    /**
+     * Применяет стили для каждой меры (Header, Total, Values) к отрисованной таблице.
+     */
     private applySpecificColumnStyles(): void {
         const grid = this.target.querySelector('.datagrid');
-        if (!grid) return;
+        if (!grid) {
+            return;
+        }
 
-        const groups = this.settings.specificColumn.groups as any[];
+        const groups = this.settings.specificColumn.groups as MeasureCard[];
+        console.log("=== applySpecificColumnStyles: raw card values ===");
+    for (let i = 0; i < groups.length; i++) {
+        const card = groups[i];
+        console.log(`Card ${i}: displayName = ${card.displayName}`);
+        console.log(`  headerTextColor.value.value = ${card.headerTextColor.value.value}`);
+        console.log(`  headerBackgroundColor.value.value = ${card.headerBackgroundColor.value.value}`);
+        console.log(`  headerAlignment.value = ${card.headerAlignment.value}`);
+        console.log(`  totalTextColor.value.value = ${card.totalTextColor.value.value}`);
+        console.log(`  totalBackgroundColor.value.value = ${card.totalBackgroundColor.value.value}`);
+        console.log(`  totalAlignment.value = ${card.totalAlignment.value}`);
+        console.log(`  valuesTextColor.value.value = ${card.valuesTextColor.value.value}`);
+        console.log(`  valuesBackgroundColor.value.value = ${card.valuesBackgroundColor.value.value}`);
+        console.log(`  valuesAlignment.value = ${card.valuesAlignment.value}`);
+    }
+
         for (let i = 0; i < groups.length; i++) {
-            const group = groups[i];
-            if (!group.visible) continue;
+            const card = groups[i];
+            // Если у карточки есть свойство visible – проверяем
+            if ((card as any).visible === false) {
+                //console.log(`Skipping card ${i} because visible=false`);
+                continue;
+            }
+
+            const measureName = String(card.displayName);
 
             const settings: IMeasureSettings = {
-                textColor: group.textColor.value.value,
-                backgroundColor: group.backgroundColor.value.value,
-                alignment: group.alignment.value,
-                applyToHeader: group.applyToHeader.value,
-                applyToTotal: group.applyToTotal.value,
-                applyToValues: group.applyToValues.value
+                header: {
+                    textColor: card.headerTextColor.value.value,
+                    backgroundColor: card.headerBackgroundColor.value.value,
+                    alignment: card.headerAlignment.value
+                },
+                total: {
+                    textColor: card.totalTextColor.value.value,
+                    backgroundColor: card.totalBackgroundColor.value.value,
+                    alignment: card.totalAlignment.value
+                },
+                values: {
+                    textColor: card.valuesTextColor.value.value,
+                    backgroundColor: card.valuesBackgroundColor.value.value,
+                    alignment: card.valuesAlignment.value
+                }
             };
+
             const measureKey = `measure_${i}`;
-            applySpecificColumnSettings(grid as HTMLElement, settings, measureKey);
+            applySpecificColumnSettings(grid as HTMLElement, settings, measureKey, measureName);
         }
     }
 
@@ -283,8 +292,10 @@ export class Visual implements IVisual {
             }
 
             applyRowGrandTotalSettings(formattedMatrix, this.settings);
+            
 
             this.target.appendChild(formattedMatrix);
+            this.applySpecificColumnStyles();
 
             const table = formattedMatrix.querySelector('table');
             if (table) {
@@ -445,7 +456,7 @@ export class Visual implements IVisual {
         console.log(`[handleDataSegment] received. segment: ${dataView.metadata?.segment ? 'YES' : 'NO'}`);
         const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size;
         if (dataView.metadata?.segment) {
-            console.log("Segment present → requesting next...");
+            //console.log("Segment present → requesting next...");
             this.requestMoreData(cntRows);
             console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
         } else {

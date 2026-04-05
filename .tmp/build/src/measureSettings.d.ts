@@ -1,9 +1,12 @@
-export interface IMeasureSettings {
+export interface IColumnPartSettings {
     textColor: string;
     backgroundColor: string;
     alignment: string;
-    applyToHeader: boolean;
-    applyToTotal: boolean;
-    applyToValues: boolean;
 }
+export interface IMeasureSettings {
+    header: IColumnPartSettings;
+    total: IColumnPartSettings;
+    values: IColumnPartSettings;
+}
+export declare const defaultColumnPartSettings: IColumnPartSettings;
 export declare const defaultMeasureSettings: IMeasureSettings;

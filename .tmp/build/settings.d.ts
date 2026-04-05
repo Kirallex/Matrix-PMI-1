@@ -1,6 +1,7 @@
 import { formattingSettings } from "powerbi-visuals-utils-formattingmodel";
 import FormattingSettingsCard = formattingSettings.SimpleCard;
 import FormattingSettingsCompositeCard = formattingSettings.CompositeCard;
+import FormattingSettingsSlice = formattingSettings.Slice;
 import FormattingSettingsModel = formattingSettings.Model;
 declare class SubtotalsCard extends FormattingSettingsCard {
     rowSubtotals: formattingSettings.ToggleSwitch;
@@ -9,27 +10,27 @@ declare class SubtotalsCard extends FormattingSettingsCard {
     nonGrandTotal: formattingSettings.ToggleSwitch;
     name: string;
     displayName: string;
-    slices: formattingSettings.ToggleSwitch[];
+    slices: FormattingSettingsSlice[];
 }
 declare class HideEmptyColsCard extends FormattingSettingsCard {
     hideColsLabel: formattingSettings.ToggleSwitch;
     name: string;
     displayName: string;
-    slices: formattingSettings.ToggleSwitch[];
+    slices: FormattingSettingsSlice[];
 }
 declare class HorizontalGridlinesGroup extends FormattingSettingsCard {
     color: formattingSettings.ColorPicker;
     width: formattingSettings.NumUpDown;
     name: string;
     displayName: string;
-    slices: (formattingSettings.NumUpDown | formattingSettings.ColorPicker)[];
+    slices: FormattingSettingsSlice[];
 }
 declare class VerticalGridlinesGroup extends FormattingSettingsCard {
     color: formattingSettings.ColorPicker;
     width: formattingSettings.NumUpDown;
     name: string;
     displayName: string;
-    slices: (formattingSettings.NumUpDown | formattingSettings.ColorPicker)[];
+    slices: FormattingSettingsSlice[];
 }
 declare class BorderGroup extends FormattingSettingsCard {
     section: formattingSettings.ItemDropdown;
@@ -41,14 +42,14 @@ declare class BorderGroup extends FormattingSettingsCard {
     width: formattingSettings.NumUpDown;
     name: string;
     displayName: string;
-    slices: (formattingSettings.NumUpDown | formattingSettings.ColorPicker | formattingSettings.ItemDropdown | formattingSettings.ToggleSwitch)[];
+    slices: FormattingSettingsSlice[];
 }
 declare class OptionsGroup extends FormattingSettingsCard {
     rowPadding: formattingSettings.NumUpDown;
     globalFontSize: formattingSettings.NumUpDown;
     name: string;
     displayName: string;
-    slices: formattingSettings.NumUpDown[];
+    slices: FormattingSettingsSlice[];
 }
 declare class GridCard extends FormattingSettingsCompositeCard {
     horizontalGroup: HorizontalGridlinesGroup;
@@ -68,7 +69,7 @@ declare class ValuesGroup extends FormattingSettingsCard {
     altBackgroundColor: formattingSettings.ColorPicker;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.FontControl)[];
+    slices: FormattingSettingsSlice[];
 }
 declare class ValuesCard extends FormattingSettingsCompositeCard {
     valuesGroup: ValuesGroup;
@@ -85,7 +86,7 @@ declare class ColumnHeadersGroup extends FormattingSettingsCard {
     titleAlignment: formattingSettings.AlignmentGroup;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.FontControl | formattingSettings.AlignmentGroup)[];
+    slices: FormattingSettingsSlice[];
 }
 declare class ColumnHeadersCard extends FormattingSettingsCompositeCard {
     columnHeadersGroup: ColumnHeadersGroup;
@@ -101,7 +102,7 @@ declare class RowHeadersGroup extends FormattingSettingsCard {
     textAlignment: formattingSettings.AlignmentGroup;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.FontControl | formattingSettings.AlignmentGroup)[];
+    slices: FormattingSettingsSlice[];
 }
 declare class RowHeadersCard extends FormattingSettingsCompositeCard {
     rowHeadersGroup: RowHeadersGroup;
@@ -117,7 +118,7 @@ declare class ColumnGrandTotalGroup extends FormattingSettingsCard {
     applyToLabels: formattingSettings.ToggleSwitch;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.ToggleSwitch | formattingSettings.FontControl)[];
+    slices: FormattingSettingsSlice[];
 }
 declare class ColumnGrandTotalCard extends FormattingSettingsCompositeCard {
     columnGrandTotalGroup: ColumnGrandTotalGroup;
@@ -133,7 +134,7 @@ declare class RowGrandTotalGroup extends FormattingSettingsCard {
     applyToLabels: formattingSettings.ToggleSwitch;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.ToggleSwitch | formattingSettings.FontControl)[];
+    slices: FormattingSettingsSlice[];
 }
 declare class RowGrandTotalCard extends FormattingSettingsCompositeCard {
     rowGrandTotalGroup: RowGrandTotalGroup;
@@ -142,24 +143,11 @@ declare class RowGrandTotalCard extends FormattingSettingsCompositeCard {
     displayName: string;
     constructor();
 }
-export declare class MeasureCard extends FormattingSettingsCard {
-    headerTextColor: formattingSettings.ColorPicker;
-    headerBackgroundColor: formattingSettings.ColorPicker;
-    headerAlignment: formattingSettings.AlignmentGroup;
-    totalTextColor: formattingSettings.ColorPicker;
-    totalBackgroundColor: formattingSettings.ColorPicker;
-    totalAlignment: formattingSettings.AlignmentGroup;
-    valuesTextColor: formattingSettings.ColorPicker;
-    valuesBackgroundColor: formattingSettings.ColorPicker;
-    valuesAlignment: formattingSettings.AlignmentGroup;
-    constructor(measureName: string, displayName: string);
-}
 declare class SpecificColumnCard extends formattingSettings.CompositeCard {
     groups: formattingSettings.Cards[];
     name: string;
     displayName: string;
     constructor();
-    updateGroups(measureNames: string[]): void;
 }
 export declare class VisualSettings extends FormattingSettingsModel {
     subTotals: SubtotalsCard;
