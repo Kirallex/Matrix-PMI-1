@@ -3,7 +3,6 @@ import "./../style/visual.less";
 import powerbi from "powerbi-visuals-api";
 import { MatrixDataviewHtmlFormatter } from "./matrixDataViewHtmlFormatter";
 import { ExcelDownloader } from "./downloadExcel";
-import { ColumnResizer } from "./columnResizer";
 import { HeightResizer } from "./heightResizer";
 import IVisual = powerbi.extensibility.visual.IVisual;
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
@@ -21,7 +20,8 @@ import { applyRowGrandTotalSettings } from "./rowGrandTotalSettings";
 import { FormattingSettingsService } from "powerbi-visuals-utils-formattingmodel";
 import { IMeasureSettings } from "./measureSettings";
 import { applySpecificColumnSettings } from "./specificColumnSettings";
-import { VisualSettings, MeasureCard } from "./settings";
+import { applyColumnWidthsFromSettings } from "./columnWidth";
+import { VisualSettings, MeasureCard, ColumnWidthCard } from "./settings";
 
 export class Visual implements IVisual {
     private target: HTMLElement;
@@ -33,7 +33,6 @@ export class Visual implements IVisual {
     private pendingExport: boolean = false;
     private expandedNodes: Set<string> = new Set();
     private prevRowCount: number = 0;
-    private columnWidths: { [colIndex: number]: number } = {};
     private currentHeight: number | null = null;
     private formattingSettingsService: FormattingSettingsService;
 
@@ -68,7 +67,7 @@ export class Visual implements IVisual {
         )?.sources || [];
         this.measureNames = measures.map(m => m.displayName);
 
-        // Обновляем структуру SpecificColumn (динамические группы)
+        // Обновляем структуру SpecificColumn и ColumnWidth (динамические группы)
         this.updateSpecificColumnGroups();
 
         const rowCount = this.countRows(this.currentDataView);
@@ -83,7 +82,6 @@ export class Visual implements IVisual {
         if (!this.isExporting && !this.allDataLoaded) {
             if (!this.loadingAllData) {
                 if (this.currentDataView.metadata?.segment) {
-                    //console.log('Starting to load all data segments for display...');
                     this.loadingAllData = true;
                     this.requestNextDataSegment();
                     return;
@@ -93,12 +91,10 @@ export class Visual implements IVisual {
             }
 
             if (this.loadingAllData && options.operationKind === VisualDataChangeOperationKind.Append) {
-                //console.log('Received next data segment, continuing...');
                 this.pendingRenderAfterLoad = true;
                 if (this.currentDataView.metadata?.segment) {
                     this.requestNextDataSegment();
                 } else {
-                    //console.log('All data loaded.');
                     this.loadingAllData = false;
                     this.allDataLoaded = true;
                     this.renderVisualization(this.countRows(this.currentDataView));
@@ -109,9 +105,7 @@ export class Visual implements IVisual {
         }
 
         if (options.operationKind === VisualDataChangeOperationKind.Create) {
-            //console.log('New data set, clearing expandedNodes and columnWidths');
             this.expandedNodes.clear();
-            this.columnWidths = {};
             this.prevRowCount = rowCount;
         } else {
             this.prevRowCount = rowCount;
@@ -123,7 +117,6 @@ export class Visual implements IVisual {
 
         if (!this.loadingAllData) {
             this.renderVisualization(rowCount);
-            //this.applySpecificColumnStyles();
         }
 
         if (this.pendingExport) {
@@ -144,12 +137,11 @@ export class Visual implements IVisual {
     }
 
     /**
-     * Обновляет группы в SpecificColumn в соответствии с реальными именами мер.
-     * Вызывается из update() и getFormattingModel().
+     * Обновляет группы в SpecificColumn и ColumnWidth в соответствии с реальными именами мер.
      */
     private updateSpecificColumnGroups(): void {
-        // Вызываем метод updateGroups у specificColumn, который перестраивает карточки
         (this.settings.specificColumn as any).updateGroups(this.measureNames);
+        (this.settings.columnWidth as ColumnWidthCard).updateMeasureWidths(this.measureNames);
     }
 
     /**
@@ -157,36 +149,14 @@ export class Visual implements IVisual {
      */
     private applySpecificColumnStyles(): void {
         const grid = this.target.querySelector('.datagrid');
-        if (!grid) {
-            return;
-        }
+        if (!grid) return;
 
         const groups = this.settings.specificColumn.groups as MeasureCard[];
-        console.log("=== applySpecificColumnStyles: raw card values ===");
-    for (let i = 0; i < groups.length; i++) {
-        const card = groups[i];
-        console.log(`Card ${i}: displayName = ${card.displayName}`);
-        console.log(`  headerTextColor.value.value = ${card.headerTextColor.value.value}`);
-        console.log(`  headerBackgroundColor.value.value = ${card.headerBackgroundColor.value.value}`);
-        console.log(`  headerAlignment.value = ${card.headerAlignment.value}`);
-        console.log(`  totalTextColor.value.value = ${card.totalTextColor.value.value}`);
-        console.log(`  totalBackgroundColor.value.value = ${card.totalBackgroundColor.value.value}`);
-        console.log(`  totalAlignment.value = ${card.totalAlignment.value}`);
-        console.log(`  valuesTextColor.value.value = ${card.valuesTextColor.value.value}`);
-        console.log(`  valuesBackgroundColor.value.value = ${card.valuesBackgroundColor.value.value}`);
-        console.log(`  valuesAlignment.value = ${card.valuesAlignment.value}`);
-    }
-
         for (let i = 0; i < groups.length; i++) {
             const card = groups[i];
-            // Если у карточки есть свойство visible – проверяем
-            if ((card as any).visible === false) {
-                //console.log(`Skipping card ${i} because visible=false`);
-                continue;
-            }
+            if ((card as any).visible === false) continue;
 
             const measureName = String(card.displayName);
-
             const settings: IMeasureSettings = {
                 header: {
                     textColor: card.headerTextColor.value.value,
@@ -204,7 +174,6 @@ export class Visual implements IVisual {
                     alignment: card.valuesAlignment.value
                 }
             };
-
             const measureKey = `measure_${i}`;
             applySpecificColumnSettings(grid as HTMLElement, settings, measureKey, measureName);
         }
@@ -258,7 +227,6 @@ export class Visual implements IVisual {
 
         const existingGrids = this.target.querySelectorAll('.datagrid');
         if (existingGrids.length > 0) {
-            ColumnResizer.cleanup();
             HeightResizer.cleanup();
             existingGrids.forEach(grid => grid.remove());
         }
@@ -292,96 +260,17 @@ export class Visual implements IVisual {
             }
 
             applyRowGrandTotalSettings(formattedMatrix, this.settings);
-            
 
             this.target.appendChild(formattedMatrix);
             this.applySpecificColumnStyles();
 
             const table = formattedMatrix.querySelector('table');
             if (table) {
-                if (Object.keys(this.columnWidths).length > 0) {
-                    for (let colIndex = 1; colIndex < table.rows[0]?.cells.length; colIndex++) {
-                        const width = this.columnWidths[colIndex];
-                        if (width) {
-                            for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
-                                const cell = table.rows[rowIndex].cells[colIndex];
-                                if (cell) {
-                                    cell.style.width = width + 'px';
-                                    cell.style.minWidth = width + 'px';
-                                    cell.style.maxWidth = width + 'px';
-                                }
-                            }
-                        }
-                    }
+                // Применяем ширины из панели форматирования (Column Width)
+                const columnWidthCard = this.settings.columnWidth as ColumnWidthCard;
+                if (columnWidthCard) {
+                    applyColumnWidthsFromSettings(table, columnWidthCard, this.measureNames);
                 }
-
-                const firstColCells = table.querySelectorAll('tr > *:first-child');
-                if (firstColCells.length > 0) {
-                    if (this.columnWidths[0]) {
-                        for (let i = 0; i < table.rows.length; i++) {
-                            const cell = table.rows[i].cells[0];
-                            if (cell) {
-                                const w = this.columnWidths[0];
-                                cell.style.width = w + 'px';
-                                cell.style.minWidth = w + 'px';
-                                cell.style.maxWidth = w + 'px';
-                            }
-                        }
-                    } else {
-                        firstColCells.forEach(cell => {
-                            (cell as HTMLElement).style.width = '';
-                            (cell as HTMLElement).style.minWidth = '';
-                            (cell as HTMLElement).style.maxWidth = '';
-                        });
-
-                        const measureDiv = document.createElement('div');
-                        measureDiv.style.position = 'absolute';
-                        measureDiv.style.left = '-9999px';
-                        measureDiv.style.top = '-9999px';
-                        measureDiv.style.visibility = 'hidden';
-
-                        const sampleCell = firstColCells[0];
-                        const computedStyle = window.getComputedStyle(sampleCell);
-                        measureDiv.style.font = computedStyle.font;
-                        measureDiv.style.fontFamily = computedStyle.fontFamily;
-                        measureDiv.style.fontSize = computedStyle.fontSize;
-                        measureDiv.style.fontWeight = computedStyle.fontWeight;
-                        measureDiv.style.lineHeight = computedStyle.lineHeight;
-                        measureDiv.style.whiteSpace = 'nowrap';
-
-                        document.body.appendChild(measureDiv);
-
-                        let maxWidth = 0;
-                        firstColCells.forEach(cell => {
-                            const text = cell.textContent || '';
-                            measureDiv.textContent = text;
-                            const w = measureDiv.offsetWidth;
-                            if (w > maxWidth) maxWidth = w;
-                        });
-
-                        document.body.removeChild(measureDiv);
-                        maxWidth += 20;
-
-                        for (let i = 0; i < table.rows.length; i++) {
-                            const cell = table.rows[i].cells[0];
-                            if (cell) {
-                                cell.style.minWidth = maxWidth + 'px';
-                            }
-                        }
-                    }
-                }
-
-                if (Object.keys(this.columnWidths).length === 0) {
-                    for (let colIndex = 1; colIndex < table.rows[0]?.cells.length; colIndex++) {
-                        const cell = table.rows[0].cells[colIndex];
-                        if (cell) {
-                            const width = cell.offsetWidth;
-                            this.columnWidths[colIndex] = width;
-                        }
-                    }
-                }
-
-                this.applyColumnWidths(table);
             }
 
             formattedMatrix.addEventListener('click', (e) => {
@@ -401,31 +290,9 @@ export class Visual implements IVisual {
                 }
             });
 
-            if (table) {
-                ColumnResizer.init(table, (colIndex: number, newWidth: number) => {
-                    this.columnWidths[colIndex] = newWidth;
-                });
-            }
-
             HeightResizer.init(formattedMatrix, (newHeight: number) => {
                 this.currentHeight = newHeight;
             });
-        }
-    }
-
-    private applyColumnWidths(table: HTMLTableElement): void {
-        for (let colIndex = 0; colIndex < table.rows[0]?.cells.length; colIndex++) {
-            const width = this.columnWidths[colIndex];
-            if (width) {
-                for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
-                    const cell = table.rows[rowIndex].cells[colIndex];
-                    if (cell) {
-                        cell.style.width = width + 'px';
-                        cell.style.minWidth = width + 'px';
-                        cell.style.maxWidth = width + 'px';
-                    }
-                }
-            }
         }
     }
 
@@ -456,7 +323,6 @@ export class Visual implements IVisual {
         console.log(`[handleDataSegment] received. segment: ${dataView.metadata?.segment ? 'YES' : 'NO'}`);
         const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size;
         if (dataView.metadata?.segment) {
-            //console.log("Segment present → requesting next...");
             this.requestMoreData(cntRows);
             console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
         } else {

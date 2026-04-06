@@ -13,7 +13,6 @@ export declare class Visual implements IVisual {
     private pendingExport;
     private expandedNodes;
     private prevRowCount;
-    private columnWidths;
     private currentHeight;
     private formattingSettingsService;
     private loadingAllData;
@@ -24,8 +23,7 @@ export declare class Visual implements IVisual {
     update(options: VisualUpdateOptions): void;
     getFormattingModel(): powerbi.visuals.FormattingModel;
     /**
-     * Обновляет группы в SpecificColumn в соответствии с реальными именами мер.
-     * Вызывается из update() и getFormattingModel().
+     * Обновляет группы в SpecificColumn и ColumnWidth в соответствии с реальными именами мер.
      */
     private updateSpecificColumnGroups;
     /**
@@ -35,7 +33,6 @@ export declare class Visual implements IVisual {
     private requestNextDataSegment;
     private countRows;
     private renderVisualization;
-    private applyColumnWidths;
     private handleExportClick;
     private requestMoreData;
     private handleDataSegment;

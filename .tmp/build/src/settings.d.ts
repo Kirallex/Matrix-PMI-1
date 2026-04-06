@@ -161,6 +161,17 @@ declare class SpecificColumnCard extends formattingSettings.CompositeCard {
     constructor();
     updateGroups(measureNames: string[]): void;
 }
+export declare class ColumnWidthCard extends formattingSettings.SimpleCard {
+    name: string;
+    displayName: string;
+    slices: formattingSettings.Slice[];
+    private rowHeaderWidth;
+    private measureWidths;
+    constructor();
+    updateMeasureWidths(measureNames: string[]): void;
+    getRowHeaderWidth(): number;
+    getMeasureWidth(measureIndex: number): number;
+}
 export declare class VisualSettings extends FormattingSettingsModel {
     subTotals: SubtotalsCard;
     hideEmptyCols: HideEmptyColsCard;
@@ -171,6 +182,7 @@ export declare class VisualSettings extends FormattingSettingsModel {
     columnGrandTotal: ColumnGrandTotalCard;
     rowGrandTotal: RowGrandTotalCard;
     specificColumn: SpecificColumnCard;
+    columnWidth: ColumnWidthCard;
     constructor();
 }
 export {};

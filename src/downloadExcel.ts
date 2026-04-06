@@ -35,7 +35,7 @@ export class ExcelDownloader {
                 row.push(text);
             }
             
-            csv += row.join(',') + '\n';
+            csv += row.join('~') + '\n';
         }
 
         const bom = '\uFEFF';

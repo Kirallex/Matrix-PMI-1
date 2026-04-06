@@ -466,6 +466,67 @@ class SpecificColumnCard extends formattingSettings.CompositeCard {
 //     }
 // }
 
+
+
+export class ColumnWidthCard extends formattingSettings.SimpleCard {
+    public name = "columnWidth";
+    public displayName = "Column Width";
+    public slices: formattingSettings.Slice[] = [];
+
+    private rowHeaderWidth: formattingSettings.NumUpDown;
+    private measureWidths: formattingSettings.NumUpDown[] = [];
+
+    constructor() {
+        super();
+        // Row header width
+        this.rowHeaderWidth = new formattingSettings.NumUpDown({
+            name: "rowHeader_width",
+            displayName: "Row header width",
+            value: 250,
+            options: { minValue: 50, maxValue: 500, step: 5 } as any
+        });
+        this.slices.push(this.rowHeaderWidth);
+
+        // Создаём 30 срезов для мер (один раз)
+        for (let i = 0; i < 30; i++) {
+            const widthSlice = new formattingSettings.NumUpDown({
+                name: `measure_${i}_width`,
+                displayName: `Measure ${i + 1} width`,
+                value: 120,
+                options: { minValue: 50, maxValue: 500, step: 5 } as any
+            });
+            this.measureWidths.push(widthSlice);
+            this.slices.push(widthSlice);
+        }
+    }
+
+    public updateMeasureWidths(measureNames: string[]): void {
+        for (let i = 0; i < this.measureWidths.length; i++) {
+            if (i < measureNames.length) {
+                // Используемые меры: показываем и обновляем имя
+                this.measureWidths[i].displayName = `${measureNames[i]} width`;
+                this.measureWidths[i].visible = true;
+            } else {
+                // Неиспользуемые меры: скрываем
+                this.measureWidths[i].visible = false;
+            }
+        }
+        // Пересобираем slices, чтобы скрытые срезы не отображались
+        this.slices = [this.rowHeaderWidth, ...this.measureWidths];
+    }
+
+    public getRowHeaderWidth(): number {
+        return this.rowHeaderWidth.value;
+    }
+
+    public getMeasureWidth(measureIndex: number): number {
+        if (measureIndex < this.measureWidths.length) {
+            return this.measureWidths[measureIndex].value;
+        }
+        return 120;
+    }
+}
+
 // --- Основная модель ---
 export class VisualSettings extends FormattingSettingsModel {
     public subTotals: SubtotalsCard = new SubtotalsCard();
@@ -477,13 +538,15 @@ export class VisualSettings extends FormattingSettingsModel {
     public columnGrandTotal: ColumnGrandTotalCard = new ColumnGrandTotalCard();
     public rowGrandTotal: RowGrandTotalCard = new RowGrandTotalCard();
     public specificColumn: SpecificColumnCard = new SpecificColumnCard();
+    public columnWidth: ColumnWidthCard = new ColumnWidthCard();
 
     constructor() {
         super();
         this.cards = [
             this.subTotals, this.hideEmptyCols, this.grid, this.values,
             this.columnHeaders, this.rowHeaders, this.columnGrandTotal,
-            this.rowGrandTotal, this.specificColumn
+            this.rowGrandTotal, this.specificColumn,
+            this.columnWidth
         ];
     }
 }

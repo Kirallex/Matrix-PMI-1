@@ -508,7 +508,43 @@
             "measure_29_values_backgroundColor": { "type": { "fill": { "solid": { "color": true } } } },
             "measure_29_values_alignment": { "type": { "enumeration": [] } }
             }
+    },
+    "columnWidth": {
+        "displayName": "Column Width",
+        "properties": {
+            "rowHeader_width": { "type": { "numeric": true } },
+            "measure_0_width": { "type": { "numeric": true } },
+            "measure_1_width": { "type": { "numeric": true } },
+            "measure_2_width": { "type": { "numeric": true } },
+            "measure_3_width": { "type": { "numeric": true } },
+            "measure_4_width": { "type": { "numeric": true } },
+            "measure_5_width": { "type": { "numeric": true } },
+            "measure_6_width": { "type": { "numeric": true } },
+            "measure_7_width": { "type": { "numeric": true } },
+            "measure_8_width": { "type": { "numeric": true } },
+            "measure_9_width": { "type": { "numeric": true } },
+            "measure_10_width": { "type": { "numeric": true } },
+            "measure_11_width": { "type": { "numeric": true } },
+            "measure_12_width": { "type": { "numeric": true } },
+            "measure_13_width": { "type": { "numeric": true } },
+            "measure_14_width": { "type": { "numeric": true } },
+            "measure_15_width": { "type": { "numeric": true } },
+            "measure_16_width": { "type": { "numeric": true } },
+            "measure_17_width": { "type": { "numeric": true } },
+            "measure_18_width": { "type": { "numeric": true } },
+            "measure_19_width": { "type": { "numeric": true } },
+            "measure_20_width": { "type": { "numeric": true } },
+            "measure_21_width": { "type": { "numeric": true } },
+            "measure_22_width": { "type": { "numeric": true } },
+            "measure_23_width": { "type": { "numeric": true } },
+            "measure_24_width": { "type": { "numeric": true } },
+            "measure_25_width": { "type": { "numeric": true } },
+            "measure_26_width": { "type": { "numeric": true } },
+            "measure_27_width": { "type": { "numeric": true } },
+            "measure_28_width": { "type": { "numeric": true } },
+            "measure_29_width": { "type": { "numeric": true } }
         }
+    }
     },
     "subtotals": {
         "matrix": {
