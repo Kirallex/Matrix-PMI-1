@@ -19,14 +19,16 @@ export function applyColumnWidthsFromSettings(
         //console.log(`[ColumnWidth] Applying row header width to ${firstColCells.length} cells`);
         firstColCells.forEach(cell => {
             const htmlCell = cell as HTMLElement;
-            htmlCell.style.width = rowHeaderWidth + 'px';
-            htmlCell.style.minWidth = rowHeaderWidth + 'px';
-            htmlCell.style.maxWidth = rowHeaderWidth + 'px';
+            htmlCell.style.setProperty('width', rowHeaderWidth + 'px', 'important');
+            htmlCell.style.setProperty('min-width', rowHeaderWidth + 'px', 'important');
+            htmlCell.style.setProperty('max-width', rowHeaderWidth + 'px', 'important');
         });
     }
 
     // 2. Find header row (last row in thead)
-    const headerRow = table.querySelector('thead tr:last-child');
+    //const headerRow = table.querySelector('thead tr:last-child');
+    const headerRows = table.querySelectorAll('thead tr');
+    const headerRow = headerRows.length ? headerRows[headerRows.length - 1] : null;
     if (!headerRow) {
         console.warn("[ColumnWidth] No header row found (thead tr:last-child)");
         return;

@@ -22,6 +22,7 @@ import { IMeasureSettings } from "./measureSettings";
 import { applySpecificColumnSettings } from "./specificColumnSettings";
 import { applyColumnWidthsFromSettings } from "./columnWidth";
 import { VisualSettings, MeasureCard, ColumnWidthCard } from "./settings";
+import { applyBorderSettings } from "./borderSettings";
 
 export class Visual implements IVisual {
     private target: HTMLElement;
@@ -250,7 +251,8 @@ export class Visual implements IVisual {
                 formattedMatrix.style.height = this.currentHeight + 'px';
             }
 
-            applyGridSettings(formattedMatrix, this.settings);
+            //applyGridSettings(formattedMatrix, this.settings);
+            //applyBorderSettings(formattedMatrix, this.settings);
             applyValuesSettings(formattedMatrix, this.settings);
             applyColumnHeadersSettings(formattedMatrix, this.settings);
             applyRowHeadersSettings(formattedMatrix, this.settings);
@@ -258,8 +260,10 @@ export class Visual implements IVisual {
             if (this.settings.subTotals.columnSubtotals.value) {
                 applyColumnGrandTotalSettings(formattedMatrix, this.settings);
             }
-
+            
+            applyGridSettings(formattedMatrix, this.settings);
             applyRowGrandTotalSettings(formattedMatrix, this.settings);
+            
 
             this.target.appendChild(formattedMatrix);
             this.applySpecificColumnStyles();
@@ -362,7 +366,7 @@ export class Visual implements IVisual {
                 this.applyHideEmptyColumnsSetting(fullMatrix);
             }
 
-            applyGridSettings(fullMatrix, this.settings);
+            //applyGridSettings(fullMatrix, this.settings);
 
             tempContainer.appendChild(fullMatrix);
 

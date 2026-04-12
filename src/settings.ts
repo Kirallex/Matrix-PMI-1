@@ -37,7 +37,7 @@ class HideEmptyColsCard extends FormattingSettingsCard {
 
 // --- Horizontal gridlines ---
 class HorizontalGridlinesGroup extends FormattingSettingsCard {
-    public color = new formattingSettings.ColorPicker({ name: "horizontalColor", displayName: "Color", value: { value: "#F1F1F1" } });
+    public color = new formattingSettings.ColorPicker({ name: "horizontalColor", displayName: "Color", value: { value: "transparent" } });
     public width = new formattingSettings.NumUpDown({ name: "horizontalWidth", displayName: "Width", value: 1, options: { minValue: 0, maxValue: 10, step: 1 } as any });
     public name = "horizontalGroup";
     public displayName = "Horizontal gridlines";
@@ -46,7 +46,7 @@ class HorizontalGridlinesGroup extends FormattingSettingsCard {
 
 // --- Vertical gridlines ---
 class VerticalGridlinesGroup extends FormattingSettingsCard {
-    public color = new formattingSettings.ColorPicker({ name: "verticalColor", displayName: "Color", value: { value: "#E1E1E1" } });
+    public color = new formattingSettings.ColorPicker({ name: "verticalColor", displayName: "Color", value: { value: "transparent" } });
     public width = new formattingSettings.NumUpDown({ name: "verticalWidth", displayName: "Width", value: 1, options: { minValue: 0, maxValue: 10, step: 1 } as any });
     public name = "verticalGroup";
     public displayName = "Vertical gridlines";
@@ -54,55 +54,116 @@ class VerticalGridlinesGroup extends FormattingSettingsCard {
 }
 
 // --- Border ---
-class BorderGroup extends FormattingSettingsCard {
-    public section = new formattingSettings.ItemDropdown({
-        name: "borderSection", displayName: "Section",
-        items: [
-            { value: "all", displayName: "All" },
-            { value: "columnHeader", displayName: "Column Header" },
-            { value: "rowHeader", displayName: "Row Header" },
-            { value: "values", displayName: "Values Section" }
-        ],
-        value: { value: "all", displayName: "All" }
-    });
-    public positionTop = new formattingSettings.ToggleSwitch({ name: "borderPositionTop", displayName: "Top", value: true });
-    public positionBottom = new formattingSettings.ToggleSwitch({ name: "borderPositionBottom", displayName: "Bottom", value: true });
-    public positionLeft = new formattingSettings.ToggleSwitch({ name: "borderPositionLeft", displayName: "Left", value: true });
-    public positionRight = new formattingSettings.ToggleSwitch({ name: "borderPositionRight", displayName: "Right", value: true });
-    public color = new formattingSettings.ColorPicker({ name: "borderColor", displayName: "Color", value: { value: "#F1F1F1" } });
-    public width = new formattingSettings.NumUpDown({ name: "borderWidth", displayName: "Width", value: 1, options: { minValue: 0, maxValue: 10, step: 1 } as any });
-    public name = "borderGroup";
-    public displayName = "Border";
-    public slices = [this.section, this.positionTop, this.positionBottom, this.positionLeft, this.positionRight, this.color, this.width];
+class BorderSectionCard extends formattingSettings.SimpleCard {
+    public positionTop: formattingSettings.ToggleSwitch;
+    public positionBottom: formattingSettings.ToggleSwitch;
+    public positionLeft: formattingSettings.ToggleSwitch;
+    public positionRight: formattingSettings.ToggleSwitch;
+    public color: formattingSettings.ColorPicker;
+    public width: formattingSettings.NumUpDown;
+
+    constructor(sectionName: string, displayName: string) {
+        super();
+        this.name = sectionName;
+        this.displayName = displayName;
+        
+        this.positionTop = new formattingSettings.ToggleSwitch({
+            name: `${sectionName}_top`,
+            displayName: "Top",
+            value: false
+        });
+        this.positionBottom = new formattingSettings.ToggleSwitch({
+            name: `${sectionName}_bottom`,
+            displayName: "Bottom",
+            value: false
+        });
+        this.positionLeft = new formattingSettings.ToggleSwitch({
+            name: `${sectionName}_left`,
+            displayName: "Left",
+            value: false
+        });
+        this.positionRight = new formattingSettings.ToggleSwitch({
+            name: `${sectionName}_right`,
+            displayName: "Right",
+            value: false
+        });
+        this.color = new formattingSettings.ColorPicker({
+            name: `${sectionName}_color`,
+            displayName: "Color",
+            value: { value: "#F1F1F1" }
+        });
+        this.width = new formattingSettings.NumUpDown({
+            name: `${sectionName}_width`,
+            displayName: "Width",
+            value: 1,
+            options: { minValue: 0, maxValue: 10, step: 1 } as any
+        });
+        this.slices = [
+            this.positionTop,
+            this.positionBottom,
+            this.positionLeft,
+            this.positionRight,
+            this.color,
+            this.width
+        ];
+    }
+}
+
+
+// --- Карточка Border (Composite) ---
+class BordersCard extends formattingSettings.CompositeCard {
+    public allGroup: BorderSectionCard;
+    public columnHeaderGroup: BorderSectionCard;
+    public rowHeaderGroup: BorderSectionCard;
+    public valuesGroup: BorderSectionCard;
+    public groups: formattingSettings.Cards[];
+    public name = "borders";
+    public displayName = "Borders";
+
+    constructor() {
+        super();
+        this.allGroup = new BorderSectionCard("all", "All");
+        this.columnHeaderGroup = new BorderSectionCard("columnHeader", "Column header");
+        this.rowHeaderGroup = new BorderSectionCard("rowHeader", "Row header");
+        this.valuesGroup = new BorderSectionCard("values", "Values section");
+        this.groups = [this.allGroup, this.columnHeaderGroup, this.rowHeaderGroup, this.valuesGroup];
+    }
+}
+// --- Обновлённый GridCard ---
+class GridCard extends FormattingSettingsCompositeCard {
+    public horizontalGroup: HorizontalGridlinesGroup;
+    public verticalGroup: VerticalGridlinesGroup;
+    //public borderCard: BorderCard;
+    public optionsGroup: OptionsGroup;
+    public groups: FormattingSettingsCard[];
+
+    public name = "grid";
+    public displayName = "Grid";
+
+    constructor() {
+        super();
+        this.horizontalGroup = new HorizontalGridlinesGroup();
+        this.verticalGroup = new VerticalGridlinesGroup();
+        //this.borderCard = new BorderCard();
+        this.optionsGroup = new OptionsGroup();
+        this.groups = [
+            this.horizontalGroup,
+            this.verticalGroup,
+            //this.borderCard,
+            this.optionsGroup
+        ];
+    }
 }
 
 // --- Options ---
 class OptionsGroup extends FormattingSettingsCard {
     public rowPadding = new formattingSettings.NumUpDown({ name: "rowPadding", displayName: "Row Padding", value: 5, options: { minValue: 0, maxValue: 50, step: 1 } as any });
-    public globalFontSize = new formattingSettings.NumUpDown({ name: "globalFontSize", displayName: "Global font size", value: 9, options: { minValue: 8, maxValue: 72, step: 1 } as any });
+    //public globalFontSize = new formattingSettings.NumUpDown({ name: "globalFontSize", displayName: "Global font size", value: 9, options: { minValue: 8, maxValue: 72, step: 1 } as any });
     public name = "optionsGroup";
     public displayName = "Options";
-    public slices = [this.rowPadding, this.globalFontSize];
+    public slices = [this.rowPadding, /*this.globalFontSize*/];
 }
 
-// --- Grid ---
-class GridCard extends FormattingSettingsCompositeCard {
-    public horizontalGroup: HorizontalGridlinesGroup;
-    public verticalGroup: VerticalGridlinesGroup;
-    public borderGroup: BorderGroup;
-    public optionsGroup: OptionsGroup;
-    public groups: FormattingSettingsCard[];
-    public name = "grid";
-    public displayName = "Grid";
-    constructor() {
-        super();
-        this.horizontalGroup = new HorizontalGridlinesGroup();
-        this.verticalGroup = new VerticalGridlinesGroup();
-        this.borderGroup = new BorderGroup();
-        this.optionsGroup = new OptionsGroup();
-        this.groups = [this.horizontalGroup, this.verticalGroup, this.borderGroup, this.optionsGroup];
-    }
-}
 
 // --- Values ---
 class ValuesGroup extends FormattingSettingsCard {
@@ -308,17 +369,17 @@ export class MeasureCard extends FormattingSettingsCard {
         this.headerTextColor = new formattingSettings.ColorPicker({
             name: `${prefix}_header_textColor`,
             displayName: "Header Text color",
-            value: { value: "#1E2323" }
+            value: { value: "" } //#1E2323
         });
         this.headerBackgroundColor = new formattingSettings.ColorPicker({
             name: `${prefix}_header_backgroundColor`,
             displayName: "Header Background color",
-            value: { value: "#FFFFFF" }
+            value: { value: "" } //#FFFFFF
         });
         this.headerAlignment = new formattingSettings.AlignmentGroup({
             name: `${prefix}_header_alignment`,
             displayName: "Header Alignment",
-            value: "left",
+            value: "", //left
             mode: powerbi.visuals.AlignmentGroupMode.Horizonal
         });
 
@@ -326,17 +387,17 @@ export class MeasureCard extends FormattingSettingsCard {
         this.totalTextColor = new formattingSettings.ColorPicker({
             name: `${prefix}_total_textColor`,
             displayName: "Total Text color",
-            value: { value: "#1E2323" }
+            value: { value: "" } //#1E2323
         });
         this.totalBackgroundColor = new formattingSettings.ColorPicker({
             name: `${prefix}_total_backgroundColor`,
             displayName: "Total Background color",
-            value: { value: "#FFFFFF" }
+            value: { value: "" } //#FFFFFF
         });
         this.totalAlignment = new formattingSettings.AlignmentGroup({
             name: `${prefix}_total_alignment`,
             displayName: "Total Alignment",
-            value: "left",
+            value: "", //left
             mode: powerbi.visuals.AlignmentGroupMode.Horizonal
         });
 
@@ -344,17 +405,17 @@ export class MeasureCard extends FormattingSettingsCard {
         this.valuesTextColor = new formattingSettings.ColorPicker({
             name: `${prefix}_values_textColor`,
             displayName: "Values Text color",
-            value: { value: "#1E2323" }
+            value: { value: "" } //"#1E2323"
         });
         this.valuesBackgroundColor = new formattingSettings.ColorPicker({
             name: `${prefix}_values_backgroundColor`,
             displayName: "Values Background color",
-            value: { value: "#FFFFFF" }
+            value: { value: "" } //"#FFFFFF"
         });
         this.valuesAlignment = new formattingSettings.AlignmentGroup({
             name: `${prefix}_values_alignment`,
             displayName: "Values Alignment",
-            value: "left",
+            value: "", //left
             mode: powerbi.visuals.AlignmentGroupMode.Horizonal
         });
 
@@ -363,12 +424,12 @@ export class MeasureCard extends FormattingSettingsCard {
             this.headerTextColor,
             this.headerBackgroundColor,
             this.headerAlignment,
-            this.totalTextColor,
-            this.totalBackgroundColor,
-            this.totalAlignment,
             this.valuesTextColor,
             this.valuesBackgroundColor,
-            this.valuesAlignment
+            this.valuesAlignment,
+            this.totalTextColor,
+            this.totalBackgroundColor,
+            this.totalAlignment
         ];
     }
 }
@@ -482,7 +543,7 @@ export class ColumnWidthCard extends formattingSettings.SimpleCard {
         this.rowHeaderWidth = new formattingSettings.NumUpDown({
             name: "rowHeader_width",
             displayName: "Row header width",
-            value: 250,
+            value: 300,
             options: { minValue: 50, maxValue: 500, step: 5 } as any
         });
         this.slices.push(this.rowHeaderWidth);
@@ -539,14 +600,14 @@ export class VisualSettings extends FormattingSettingsModel {
     public rowGrandTotal: RowGrandTotalCard = new RowGrandTotalCard();
     public specificColumn: SpecificColumnCard = new SpecificColumnCard();
     public columnWidth: ColumnWidthCard = new ColumnWidthCard();
+    public borders: BordersCard = new BordersCard();
 
     constructor() {
         super();
         this.cards = [
-            this.subTotals, this.hideEmptyCols, this.grid, this.values,
-            this.columnHeaders, this.rowHeaders, this.columnGrandTotal,
-            this.rowGrandTotal, this.specificColumn,
-            this.columnWidth
+            this.subTotals, this.hideEmptyCols, this.grid,  //this.borders,
+            this.values, this.columnHeaders, this.rowHeaders, this.columnGrandTotal,
+            this.rowGrandTotal, this.specificColumn, this.columnWidth
         ];
     }
 }

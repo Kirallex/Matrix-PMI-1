@@ -38,6 +38,22 @@ export class MatrixDataviewHtmlFormatter {
             showNonGrandTotal
         );
 
+        let borderDiv = theadElement.querySelector('.thead-border');
+        if (!borderDiv) {
+            borderDiv = document.createElement('div');
+            borderDiv.className = 'thead-border';
+            // Стили задаём сразу, чтобы не зависеть от gridSettings
+            (borderDiv as HTMLElement).style.position = 'absolute';
+            (borderDiv as HTMLElement).style.top = '0';
+            (borderDiv as HTMLElement).style.left = '0';
+            (borderDiv as HTMLElement).style.width = '100%';
+            (borderDiv as HTMLElement).style.height = '100%';
+            (borderDiv as HTMLElement).style.pointerEvents = 'none';
+            (borderDiv as HTMLElement).style.boxSizing = 'border-box';
+            (borderDiv as HTMLElement).style.zIndex = '2000';
+            theadElement.appendChild(borderDiv);
+        }
+
         tableElement.appendChild(theadElement);
         tableElement.appendChild(tbodyElement);
         htmlElement.appendChild(tableElement);

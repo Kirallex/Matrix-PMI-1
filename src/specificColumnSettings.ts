@@ -16,7 +16,9 @@ export function applySpecificColumnSettings(
         return;
     }
 
-    const headerRow = table.querySelector('thead tr:last-child');
+   //const headerRow = table.querySelector('thead tr:last-child');
+    const headerRows = table.querySelectorAll('thead tr');
+    const headerRow = headerRows.length ? headerRows[headerRows.length - 1] : null;
     if (!headerRow) {
         console.warn("Header row (thead tr:last-child) not found");
         return;

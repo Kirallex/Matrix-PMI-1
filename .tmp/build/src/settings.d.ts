@@ -22,43 +22,48 @@ declare class HorizontalGridlinesGroup extends FormattingSettingsCard {
     width: formattingSettings.NumUpDown;
     name: string;
     displayName: string;
-    slices: (formattingSettings.NumUpDown | formattingSettings.ColorPicker)[];
+    slices: (formattingSettings.ColorPicker | formattingSettings.NumUpDown)[];
 }
 declare class VerticalGridlinesGroup extends FormattingSettingsCard {
     color: formattingSettings.ColorPicker;
     width: formattingSettings.NumUpDown;
     name: string;
     displayName: string;
-    slices: (formattingSettings.NumUpDown | formattingSettings.ColorPicker)[];
+    slices: (formattingSettings.ColorPicker | formattingSettings.NumUpDown)[];
 }
-declare class BorderGroup extends FormattingSettingsCard {
-    section: formattingSettings.ItemDropdown;
+declare class BorderSectionCard extends formattingSettings.SimpleCard {
     positionTop: formattingSettings.ToggleSwitch;
     positionBottom: formattingSettings.ToggleSwitch;
     positionLeft: formattingSettings.ToggleSwitch;
     positionRight: formattingSettings.ToggleSwitch;
     color: formattingSettings.ColorPicker;
     width: formattingSettings.NumUpDown;
-    name: string;
-    displayName: string;
-    slices: (formattingSettings.NumUpDown | formattingSettings.ColorPicker | formattingSettings.ItemDropdown | formattingSettings.ToggleSwitch)[];
+    constructor(sectionName: string, displayName: string);
 }
-declare class OptionsGroup extends FormattingSettingsCard {
-    rowPadding: formattingSettings.NumUpDown;
-    globalFontSize: formattingSettings.NumUpDown;
+declare class BordersCard extends formattingSettings.CompositeCard {
+    allGroup: BorderSectionCard;
+    columnHeaderGroup: BorderSectionCard;
+    rowHeaderGroup: BorderSectionCard;
+    valuesGroup: BorderSectionCard;
+    groups: formattingSettings.Cards[];
     name: string;
     displayName: string;
-    slices: formattingSettings.NumUpDown[];
+    constructor();
 }
 declare class GridCard extends FormattingSettingsCompositeCard {
     horizontalGroup: HorizontalGridlinesGroup;
     verticalGroup: VerticalGridlinesGroup;
-    borderGroup: BorderGroup;
     optionsGroup: OptionsGroup;
     groups: FormattingSettingsCard[];
     name: string;
     displayName: string;
     constructor();
+}
+declare class OptionsGroup extends FormattingSettingsCard {
+    rowPadding: formattingSettings.NumUpDown;
+    name: string;
+    displayName: string;
+    slices: formattingSettings.NumUpDown[];
 }
 declare class ValuesGroup extends FormattingSettingsCard {
     font: formattingSettings.FontControl;
@@ -117,7 +122,7 @@ declare class ColumnGrandTotalGroup extends FormattingSettingsCard {
     applyToLabels: formattingSettings.ToggleSwitch;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.ToggleSwitch | formattingSettings.FontControl)[];
+    slices: (formattingSettings.ColorPicker | formattingSettings.FontControl | formattingSettings.ToggleSwitch)[];
 }
 declare class ColumnGrandTotalCard extends FormattingSettingsCompositeCard {
     columnGrandTotalGroup: ColumnGrandTotalGroup;
@@ -133,7 +138,7 @@ declare class RowGrandTotalGroup extends FormattingSettingsCard {
     applyToLabels: formattingSettings.ToggleSwitch;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.ToggleSwitch | formattingSettings.FontControl)[];
+    slices: (formattingSettings.ColorPicker | formattingSettings.FontControl | formattingSettings.ToggleSwitch)[];
 }
 declare class RowGrandTotalCard extends FormattingSettingsCompositeCard {
     rowGrandTotalGroup: RowGrandTotalGroup;
@@ -183,6 +188,7 @@ export declare class VisualSettings extends FormattingSettingsModel {
     rowGrandTotal: RowGrandTotalCard;
     specificColumn: SpecificColumnCard;
     columnWidth: ColumnWidthCard;
+    borders: BordersCard;
     constructor();
 }
 export {};
