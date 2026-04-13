@@ -19,6 +19,9 @@ export declare class Visual implements IVisual {
     private allDataLoaded;
     private pendingRenderAfterLoad;
     private measureNames;
+    private savedScrollTop;
+    private savedScrollLeft;
+    private targetRowPath;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
     getFormattingModel(): powerbi.visuals.FormattingModel;

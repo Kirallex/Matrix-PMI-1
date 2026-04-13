@@ -43,6 +43,11 @@ export class Visual implements IVisual {
 
     private measureNames: string[] = [];
 
+
+    private savedScrollTop: number = 0;
+    private savedScrollLeft: number = 0;
+    private targetRowPath: string | null = null;
+
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
         this.host = options.host;
@@ -213,6 +218,13 @@ export class Visual implements IVisual {
     }
 
     private renderVisualization(cntRows: number): void {
+        // Сохраняем позицию скролла старой сетки (если есть)
+        const oldGrid = this.target.querySelector('.datagrid') as HTMLElement;
+        if (oldGrid) {
+            this.savedScrollTop = oldGrid.scrollTop;
+            this.savedScrollLeft = oldGrid.scrollLeft;
+        }
+
         if (!this.exportButton) {
             const buttonContainer = document.createElement('div');
             buttonContainer.className = 'export-button-container';
@@ -251,29 +263,44 @@ export class Visual implements IVisual {
                 formattedMatrix.style.height = this.currentHeight + 'px';
             }
 
-            //applyGridSettings(formattedMatrix, this.settings);
-            //applyBorderSettings(formattedMatrix, this.settings);
+            // Применяем настройки в правильном порядке
+            applyBorderSettings(formattedMatrix, this.settings);
             applyValuesSettings(formattedMatrix, this.settings);
             applyColumnHeadersSettings(formattedMatrix, this.settings);
             applyRowHeadersSettings(formattedMatrix, this.settings);
-
             if (this.settings.subTotals.columnSubtotals.value) {
                 applyColumnGrandTotalSettings(formattedMatrix, this.settings);
             }
-            
             applyGridSettings(formattedMatrix, this.settings);
             applyRowGrandTotalSettings(formattedMatrix, this.settings);
-            
 
             this.target.appendChild(formattedMatrix);
             this.applySpecificColumnStyles();
 
             const table = formattedMatrix.querySelector('table');
             if (table) {
-                // Применяем ширины из панели форматирования (Column Width)
                 const columnWidthCard = this.settings.columnWidth as ColumnWidthCard;
                 if (columnWidthCard) {
                     applyColumnWidthsFromSettings(table, columnWidthCard, this.measureNames);
+                }
+            }
+
+            // Восстанавливаем позицию скролла
+            const newGrid = this.target.querySelector('.datagrid') as HTMLElement;
+            if (newGrid) {
+                if (this.targetRowPath) {
+                    // Ищем строку, содержащую кнопку с нужным data-path
+                    const targetButton = newGrid.querySelector(`.expandCollapseButton[data-path="${this.targetRowPath}"]`);
+                    if (targetButton) {
+                        const targetRow = targetButton.closest('tr');
+                        if (targetRow) {
+                            targetRow.scrollIntoView({ block: 'center', behavior: 'auto' });
+                        }
+                    }
+                    this.targetRowPath = null; // сбрасываем после использования
+                } else if (this.savedScrollTop > 0 || this.savedScrollLeft > 0) {
+                    newGrid.scrollTop = this.savedScrollTop;
+                    newGrid.scrollLeft = this.savedScrollLeft;
                 }
             }
 
@@ -284,6 +311,8 @@ export class Visual implements IVisual {
                     e.stopPropagation();
                     const path = expandBtn.dataset.path;
                     if (path) {
+                        // Сохраняем путь строки для последующей прокрутки
+                        this.targetRowPath = path;
                         if (this.expandedNodes.has(path)) {
                             this.expandedNodes.delete(path);
                         } else {
@@ -365,8 +394,6 @@ export class Visual implements IVisual {
             if (this.settings?.hideEmptyCols?.hideColsLabel?.value) {
                 this.applyHideEmptyColumnsSetting(fullMatrix);
             }
-
-            //applyGridSettings(fullMatrix, this.settings);
 
             tempContainer.appendChild(fullMatrix);
 
