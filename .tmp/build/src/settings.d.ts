@@ -22,14 +22,14 @@ declare class HorizontalGridlinesGroup extends FormattingSettingsCard {
     width: formattingSettings.NumUpDown;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.NumUpDown)[];
+    slices: (formattingSettings.NumUpDown | formattingSettings.ColorPicker)[];
 }
 declare class VerticalGridlinesGroup extends FormattingSettingsCard {
     color: formattingSettings.ColorPicker;
     width: formattingSettings.NumUpDown;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.NumUpDown)[];
+    slices: (formattingSettings.NumUpDown | formattingSettings.ColorPicker)[];
 }
 declare class BorderSectionCard extends formattingSettings.SimpleCard {
     positionTop: formattingSettings.ToggleSwitch;
@@ -73,7 +73,7 @@ declare class ValuesGroup extends FormattingSettingsCard {
     altBackgroundColor: formattingSettings.ColorPicker;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.FontControl)[];
+    slices: (formattingSettings.FontControl | formattingSettings.ColorPicker)[];
 }
 declare class ValuesCard extends FormattingSettingsCompositeCard {
     valuesGroup: ValuesGroup;
@@ -90,10 +90,17 @@ declare class ColumnHeadersGroup extends FormattingSettingsCard {
     titleAlignment: formattingSettings.AlignmentGroup;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.FontControl | formattingSettings.AlignmentGroup)[];
+    slices: (formattingSettings.FontControl | formattingSettings.ColorPicker | formattingSettings.AlignmentGroup)[];
+}
+declare class ColumnHeadersRowHider extends FormattingSettingsCard {
+    hideTechRowLabel: formattingSettings.ToggleSwitch;
+    name: string;
+    displayName: string;
+    slices: formattingSettings.ToggleSwitch[];
 }
 declare class ColumnHeadersCard extends FormattingSettingsCompositeCard {
     columnHeadersGroup: ColumnHeadersGroup;
+    hideTechRowCard: ColumnHeadersRowHider;
     groups: FormattingSettingsCard[];
     name: string;
     displayName: string;
@@ -106,7 +113,7 @@ declare class RowHeadersGroup extends FormattingSettingsCard {
     textAlignment: formattingSettings.AlignmentGroup;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.FontControl | formattingSettings.AlignmentGroup)[];
+    slices: (formattingSettings.FontControl | formattingSettings.ColorPicker | formattingSettings.AlignmentGroup)[];
 }
 declare class RowHeadersCard extends FormattingSettingsCompositeCard {
     rowHeadersGroup: RowHeadersGroup;
@@ -122,7 +129,7 @@ declare class ColumnGrandTotalGroup extends FormattingSettingsCard {
     applyToLabels: formattingSettings.ToggleSwitch;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.FontControl | formattingSettings.ToggleSwitch)[];
+    slices: (formattingSettings.FontControl | formattingSettings.ToggleSwitch | formattingSettings.ColorPicker)[];
 }
 declare class ColumnGrandTotalCard extends FormattingSettingsCompositeCard {
     columnGrandTotalGroup: ColumnGrandTotalGroup;
@@ -138,7 +145,7 @@ declare class RowGrandTotalGroup extends FormattingSettingsCard {
     applyToLabels: formattingSettings.ToggleSwitch;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.FontControl | formattingSettings.ToggleSwitch)[];
+    slices: (formattingSettings.FontControl | formattingSettings.ToggleSwitch | formattingSettings.ColorPicker)[];
 }
 declare class RowGrandTotalCard extends FormattingSettingsCompositeCard {
     rowGrandTotalGroup: RowGrandTotalGroup;

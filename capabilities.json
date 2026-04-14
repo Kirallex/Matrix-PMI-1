@@ -203,7 +203,8 @@
                 "textColor": { "type": { "fill": { "solid": { "color": true } } } },
                 "backgroundColor": { "type": { "fill": { "solid": { "color": true } } } },
                 "headerAlignment": { "type": { "enumeration": [] } },
-                "titleAlignment": { "type": { "enumeration": [] } }
+                "titleAlignment": { "type": { "enumeration": [] } },
+                "hideTechRowLabel": { "type": { "bool": true } }
             }
         },
 

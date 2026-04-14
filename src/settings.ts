@@ -213,15 +213,30 @@ class ColumnHeadersGroup extends FormattingSettingsCard {
     public displayName = "Text";
     public slices = [this.font, this.textColor, this.backgroundColor, this.headerAlignment, this.titleAlignment];
 }
+
+class ColumnHeadersRowHider extends FormattingSettingsCard {
+    public hideTechRowLabel = new formattingSettings.ToggleSwitch({
+        name: "hideTechRowLabel",
+        displayName: "Hide tech row",
+        value: false
+    });
+    public name = "hideTechRow";
+    public displayName = "Hide tech row";
+    public slices = [this.hideTechRowLabel];
+}
+
+
 class ColumnHeadersCard extends FormattingSettingsCompositeCard {
     public columnHeadersGroup: ColumnHeadersGroup;
+    public hideTechRowCard: ColumnHeadersRowHider;
     public groups: FormattingSettingsCard[];
     public name = "columnHeaders";
     public displayName = "Column Headers";
     constructor() {
         super();
         this.columnHeadersGroup = new ColumnHeadersGroup();
-        this.groups = [this.columnHeadersGroup];
+        this.hideTechRowCard = new ColumnHeadersRowHider();
+        this.groups = [this.columnHeadersGroup, this.hideTechRowCard];
     }
 }
 

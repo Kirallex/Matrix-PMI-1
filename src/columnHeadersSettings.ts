@@ -4,6 +4,7 @@ export function applyColumnHeadersSettings(container: HTMLElement, settings: Vis
     const table = container.querySelector('table');
     if (!table) return;
     const headers = settings.columnHeaders.columnHeadersGroup;
+    const hideTechRow = settings.columnHeaders.hideTechRowCard;
 
     // Находим все th внутри thead
     const headerCells = table.querySelectorAll('thead th');
@@ -51,4 +52,14 @@ export function applyColumnHeadersSettings(container: HTMLElement, settings: Vis
             (cell as HTMLElement).style.setProperty('text-align', titleAlignment, 'important');
         });
     }
+
+    const techRow = table.querySelectorAll('tr.topRow[data-level="0"]');
+    const shouldHide = hideTechRow.hideTechRowLabel.value;
+    techRow.forEach(row => {
+        if (shouldHide) {
+            (row as HTMLElement).style.display = 'none';
+        } else {
+            (row as HTMLElement).style.display = ''; // сброс, возвращаем стандартное отображение
+        }
+    });
 }
