@@ -82,6 +82,11 @@ export class Visual implements IVisual {
         if (options.operationKind === VisualDataChangeOperationKind.Create) {
             this.allDataLoaded = false;
             this.loadingAllData = false;
+            try {
+                (this.host as any).expandAllDrillRows();
+            } catch (e) {
+                console.warn('expandAllDrillRows is not available', e);
+            }
         }
 
         // Автозагрузка сегментов

@@ -7,6 +7,14 @@ export declare class ExcelDownloader {
      */
     exportTable(table: HTMLElement): void;
     private exportToCSV;
+    /**
+     * Проверяет, является ли текст числовым значением.
+     */
+    private isNumeric;
+    /**
+     * Извлекает текст из ячейки, очищая от пробелов, если это число.
+     */
+    private extractCellText;
     private showDownloadModal;
     private copyToClipboard;
 }

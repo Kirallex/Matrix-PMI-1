@@ -19,6 +19,10 @@
             "kind": "Measure"
         }
     ],
+    "drilldown": {
+        "roles": ["Rows", "Columns"],
+        "canDisableDrill": false
+    },
     "dataViewMappings": [
         {
             "matrix": {
@@ -28,7 +32,7 @@
                     },
                 "dataReductionAlgorithm": {
                         "window": {
-                        "count": 10000
+                        "count": 500
                         }
                 }
                 },
@@ -38,7 +42,7 @@
                     },
                 "dataReductionAlgorithm": {
                         "top": {
-                        "count": 1000
+                        "count": 500
                         }
                 }
                 },
@@ -50,6 +54,12 @@
                             }
                         }
                     ]
+                },
+               "rowDrill": {
+                    "type": "drill"
+                },
+                "columnDrill": {
+                    "type": "drill"
                 }
             }
         }
