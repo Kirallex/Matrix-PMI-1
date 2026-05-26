@@ -21,7 +21,7 @@
     ],
     "drilldown": {
         "roles": ["Rows", "Columns"],
-        "canDisableDrill": false
+        "canDisableDrill": {}
     },
     "dataViewMappings": [
         {
@@ -32,7 +32,7 @@
                     },
                 "dataReductionAlgorithm": {
                         "window": {
-                        "count": 500
+                        "count": 10000
                         }
                 }
                 },
@@ -42,7 +42,7 @@
                     },
                 "dataReductionAlgorithm": {
                         "top": {
-                        "count": 500
+                        "count": 10000
                         }
                 }
                 },
@@ -55,12 +55,8 @@
                         }
                     ]
                 },
-               "rowDrill": {
-                    "type": "drill"
-                },
-                "columnDrill": {
-                    "type": "drill"
-                }
+                "rowSubtotals": true,
+                "columnSubtotals": true
             }
         }
     ],
@@ -606,6 +602,13 @@
                     "propertyName": "levelSubtotalEnabled"
                 },
                 "defaultValue": true
+            },
+            "rowSubtotalsType": {
+                "propertyIdentifier": {
+                    "objectName": "subTotals",
+                    "propertyName": "rowSubtotalsType"
+                },
+                "defaultValue": "Top"
             }
         }
     },

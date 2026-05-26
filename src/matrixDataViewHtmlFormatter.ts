@@ -7,7 +7,7 @@ export class MatrixDataviewHtmlFormatter {
         matrix: powerbi.DataViewMatrix,
         valueSources?: powerbi.DataViewMetadataColumn[],
         expandedNodes?: Set<string>,
-        showNonGrandTotal: boolean = true,   // новый параметр
+        maxRowLevel: number = 0,
         forceExpandAll: boolean = false
     ): HTMLElement {
         const htmlElement = document.createElement('div');
@@ -16,16 +16,13 @@ export class MatrixDataviewHtmlFormatter {
         const theadElement = document.createElement('thead');
         const tbodyElement = document.createElement('tbody');
 
-        // Создаём массив соответствия индексов колонок индексам источников
         let columnSourceIndices: number[] = [];
         if (matrix.columns?.root) {
             const leafNodes = this.collectLeafNodesInOrder(matrix.columns.root);
             columnSourceIndices = leafNodes.map(node => node.levelSourceIndex !== undefined ? node.levelSourceIndex : -1);
         }
 
-        // Заголовки в thead
         this.formatColumnHeaders(matrix.columns, matrix.rows, theadElement);
-        // Данные в tbody
         this.formatRowNodes(
             matrix.rows.root,
             tbodyElement,
@@ -34,15 +31,15 @@ export class MatrixDataviewHtmlFormatter {
             columnSourceIndices,
             expandedNodes,
             '',
-            forceExpandAll, // передаём флаг дальше
-            showNonGrandTotal
+            forceExpandAll,
+            true,
+            maxRowLevel
         );
 
         let borderDiv = theadElement.querySelector('.thead-border');
         if (!borderDiv) {
             borderDiv = document.createElement('div');
             borderDiv.className = 'thead-border';
-            // Стили задаём сразу, чтобы не зависеть от gridSettings
             (borderDiv as HTMLElement).style.position = 'absolute';
             (borderDiv as HTMLElement).style.top = '0';
             (borderDiv as HTMLElement).style.left = '0';
@@ -108,7 +105,7 @@ export class MatrixDataviewHtmlFormatter {
         }
     }
 
-    private static calculateLeafCount(node): number {
+    private static calculateLeafCount(node: any): number {
         if (node.leafCount !== undefined) return node.leafCount;
         if (!node.children || node.children.length === 0) return 1;
         let count = 0;
@@ -215,7 +212,8 @@ export class MatrixDataviewHtmlFormatter {
         expandedNodes?: Set<string>,
         path: string = '',
         forceExpandAll: boolean = false,
-        showNonGrandTotal: boolean = true
+        showNonGrandTotal: boolean = true,
+        maxRowLevel: number = 0
     ) {
         if (!root) return;
 
@@ -233,7 +231,6 @@ export class MatrixDataviewHtmlFormatter {
             thElement.setAttribute('class', 'formatRowNodes');
             thElement.style.textAlign = 'left';
 
-            // Отступы
             let indentText = "";
             for (let i = 0; i < level; i++) {
                 indentText += '\u00A0\u00A0\u00A0\u00A0';
@@ -243,7 +240,6 @@ export class MatrixDataviewHtmlFormatter {
                 thElement.appendChild(indentNode);
             }
 
-            // Значение ячейки (без отступов)
             let displayValue = "";
             if (root.isSubtotal) {
                 displayValue = "Total";
@@ -255,21 +251,22 @@ export class MatrixDataviewHtmlFormatter {
                 displayValue = root.value !== undefined ? root.value : "";
             }
 
-            // Кнопка раскрытия
+            // Кнопка показывается ТОЛЬКО если есть реальные дети в данных
             const hasChildren = root.children && root.children.length > 0 && !root.isSubtotal;
+
             if (hasChildren) {
                 const expandBtn = document.createElement('span');
                 expandBtn.className = 'expandCollapseButton';
                 expandBtn.dataset.path = path;
-                expandBtn.innerHTML = '';
-                expandBtn.insertAdjacentHTML('beforeend', expandedNodes?.has(path) ? minusIcon : plusIcon);
+
+                const isExpanded = forceExpandAll || expandedNodes?.has(path) === true;
+                expandBtn.innerHTML = isExpanded ? minusIcon : plusIcon;
+
                 thElement.appendChild(expandBtn);
-                // Фиксированный пробел после кнопки
                 const spaceNode = document.createTextNode('\u00A0\u00A0');
                 thElement.appendChild(spaceNode);
             }
 
-            // Текст оборачиваем в span для независимого выравнивания
             const textSpan = document.createElement('span');
             textSpan.className = 'row-header-text';
             const textNode = document.createTextNode(displayValue);
@@ -284,12 +281,11 @@ export class MatrixDataviewHtmlFormatter {
                 trElement.classList.add('midRow');
             }
 
-            // Ячейки данных
             const columnCount = columnSourceIndices ? columnSourceIndices.length : 0;
             if (root.values && !(root.children && root.children.length > 0 && !root.isSubtotal)) {
                 this.addDataCells(trElement, root.values, columns, valueSources, columnSourceIndices);
             } else if (root.children && root.children.length > 0) {
-                const subtotalChild = root.children.find(child => child.isSubtotal);
+                const subtotalChild = root.children.find((child: any) => child.isSubtotal);
                 if (subtotalChild && subtotalChild.values) {
                     this.addDataCells(trElement, subtotalChild.values, columns, valueSources, columnSourceIndices);
                 } else {
@@ -310,13 +306,14 @@ export class MatrixDataviewHtmlFormatter {
             topElement.appendChild(trElement);
         }
 
-        // Рекурсивный обход детей
+        // Рекурсивно показываем детей, если узел раскрыт или forceExpandAll
         if (root.children && root.children.length > 0 && !root.isSubtotal) {
             const showChildren = forceExpandAll || (level === -1) || (expandedNodes?.has(path) === true);
             if (showChildren) {
                 for (const child of root.children) {
                     const childPath = path ? `${path}-${child.levelSourceIndex || child.value}` : `${child.levelSourceIndex || child.value}`;
-                    this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices, expandedNodes, childPath, forceExpandAll, showNonGrandTotal);
+                    this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices,
+                        expandedNodes, childPath, forceExpandAll, showNonGrandTotal, maxRowLevel);
                 }
             }
         }

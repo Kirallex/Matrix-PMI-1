@@ -32,21 +32,33 @@ export class Visual implements IVisual {
     private exportButton: HTMLButtonElement | null = null;
     private isExporting: boolean = false;
     private pendingExport: boolean = false;
+
+    // Раскрытые узлы (пути) – локальное состояние
     private expandedNodes: Set<string> = new Set();
+
+    // Кэш дочерних узлов для восстановления иерархии при экспорте и drill-up
+    private childrenCache: Map<string, powerbi.DataViewMatrixNode[]> = new Map();
+
+    // Для прогрессивной загрузки (скролл)
+    private canFetchMore: boolean = true;
+    private allDataLoaded: boolean = false;
+
+    // Максимальная глубина иерархии строк
+    private maxRowLevelsEver: number = 0;
+
     private prevRowCount: number = 0;
     private currentHeight: number | null = null;
     private formattingSettingsService: FormattingSettingsService;
 
-    private loadingAllData: boolean = false;
-    private allDataLoaded: boolean = false;
-    private pendingRenderAfterLoad: boolean = false;
-
     private measureNames: string[] = [];
-
 
     private savedScrollTop: number = 0;
     private savedScrollLeft: number = 0;
-    private targetRowPath: string | null = null;
+
+    private cachedTotalRow: HTMLElement | null = null;
+
+    // Флаг, чтобы при первом Create не дергать expandAllDrillRows повторно
+    private initialLoadDone: boolean = false;
 
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
@@ -67,73 +79,72 @@ export class Visual implements IVisual {
             options.dataViews[0]
         ) as VisualSettings;
 
-        // Получаем реальные имена мер
         const measures = this.currentDataView?.matrix?.columns?.levels?.find(level =>
             level.sources.some(source => source.isMeasure)
         )?.sources || [];
         this.measureNames = measures.map(m => m.displayName);
 
-        // Обновляем структуру SpecificColumn и ColumnWidth (динамические группы)
         this.updateSpecificColumnGroups();
+
+        const rowLevelsCount = this.currentDataView.matrix?.rows?.levels?.length ?? 0;
+        const rootNode = this.currentDataView.matrix?.rows?.root;
+        const hasChildFields = rootNode?.childIdentityFields && rootNode.childIdentityFields.length > 0;
+        const potentialMax = rowLevelsCount + (hasChildFields ? 1 : 0);
+        this.maxRowLevelsEver = Math.max(this.maxRowLevelsEver, potentialMax);
 
         const rowCount = this.countRows(this.currentDataView);
         console.log(`[update] operationKind=${options.operationKind}, segment=${this.currentDataView.metadata?.segment ? 'YES' : 'NO'}, rows=${rowCount}`);
 
+        // При полной замене данных (Create)
         if (options.operationKind === VisualDataChangeOperationKind.Create) {
+            this.canFetchMore = true;
             this.allDataLoaded = false;
-            this.loadingAllData = false;
-            try {
-                (this.host as any).expandAllDrillRows();
-            } catch (e) {
-                console.warn('expandAllDrillRows is not available', e);
-            }
-        }
 
-        // Автозагрузка сегментов
-        if (!this.isExporting && !this.allDataLoaded) {
-            if (!this.loadingAllData) {
-                if (this.currentDataView.metadata?.segment) {
-                    this.loadingAllData = true;
-                    this.requestNextDataSegment();
-                    return;
-                } else {
-                    this.allDataLoaded = true;
+            // При самом первом Create запрашиваем полное раскрытие иерархии
+            if (!this.initialLoadDone) {
+                this.initialLoadDone = true;
+                try {
+                    (this.host as any).expandAllDrillRows();
+                } catch (e) {
+                    console.warn('expandAllDrillRows not available', e);
                 }
-            }
-
-            if (this.loadingAllData && options.operationKind === VisualDataChangeOperationKind.Append) {
-                this.pendingRenderAfterLoad = true;
-                if (this.currentDataView.metadata?.segment) {
-                    this.requestNextDataSegment();
-                } else {
-                    this.loadingAllData = false;
-                    this.allDataLoaded = true;
-                    this.renderVisualization(this.countRows(this.currentDataView));
-                    this.pendingRenderAfterLoad = false;
-                }
+                // Не делаем renderVisualization сразу — дождёмся Append с полными данными
                 return;
             }
-        }
 
-        if (options.operationKind === VisualDataChangeOperationKind.Create) {
+            // При последующих Create (изменение фильтров и т.п.) сбрасываем раскрытые узлы
             this.expandedNodes.clear();
-            this.prevRowCount = rowCount;
-        } else {
-            this.prevRowCount = rowCount;
-        }
-
-        if (this.isExporting) {
-            this.handleDataSegment(this.currentDataView, rowCount);
-        }
-
-        if (!this.loadingAllData) {
             this.renderVisualization(rowCount);
+            return;
         }
 
-        if (this.pendingExport) {
-            this.exportDataView(rowCount);
-            this.pendingExport = false;
+        // Если это дополнение (Append)
+        if (options.operationKind === VisualDataChangeOperationKind.Append) {
+            if (this.isExporting) {
+                if (!this.currentDataView.metadata?.segment) {
+                    this.finalizeExport();
+                } else {
+                    this.requestMoreDataForExport();
+                }
+            } else {
+                this.canFetchMore = true;
+                if (!this.currentDataView.metadata?.segment) {
+                    this.allDataLoaded = true;
+                    this.canFetchMore = false;
+                }
+
+                // Восстанавливаем детей из кэша (если после expandAll пришли новые сегменты)
+                if (!this.allDataLoaded) {
+                    this.applyChildrenCache(this.currentDataView);
+                }
+
+                this.renderVisualization(rowCount);
+            }
+            return;
         }
+
+        // Обычное обновление (Create без сброса, если такое возможно)
+        this.renderVisualization(rowCount);
     }
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
@@ -147,17 +158,11 @@ export class Visual implements IVisual {
         }
     }
 
-    /**
-     * Обновляет группы в SpecificColumn и ColumnWidth в соответствии с реальными именами мер.
-     */
     private updateSpecificColumnGroups(): void {
         (this.settings.specificColumn as any).updateGroups(this.measureNames);
         (this.settings.columnWidth as ColumnWidthCard).updateMeasureWidths(this.measureNames);
     }
 
-    /**
-     * Применяет стили для каждой меры (Header, Total, Values) к отрисованной таблице.
-     */
     private applySpecificColumnStyles(): void {
         const grid = this.target.querySelector('.datagrid');
         if (!grid) return;
@@ -190,25 +195,6 @@ export class Visual implements IVisual {
         }
     }
 
-    private requestNextDataSegment(): void {
-        try {
-            const accepted = this.host.fetchMoreData(true);
-            if (!accepted) {
-                console.log('Cannot fetch more data, stopping.');
-                this.loadingAllData = false;
-                this.allDataLoaded = true;
-                if (this.pendingRenderAfterLoad) {
-                    this.renderVisualization(this.countRows(this.currentDataView));
-                    this.pendingRenderAfterLoad = false;
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching more ', error);
-            this.loadingAllData = false;
-            this.allDataLoaded = true;
-        }
-    }
-
     private countRows(dataView: DataView): number {
         if (!dataView?.matrix?.rows?.root?.children) return 0;
         const countChildren = (nodes: powerbi.DataViewMatrixNode[]): number => {
@@ -222,8 +208,19 @@ export class Visual implements IVisual {
         return countChildren(dataView.matrix.rows.root.children);
     }
 
+    private moveGrandTotalToBottom(container: HTMLElement): void {
+        const tbody = container.querySelector('tbody');
+        if (!tbody) return;
+
+        const totalRow = tbody.querySelector('tr.totalRow[data-level="0"]');
+        if (!totalRow) return;
+
+        if (totalRow === tbody.lastElementChild) return;
+
+        tbody.appendChild(totalRow);
+    }
+
     private renderVisualization(cntRows: number): void {
-        // Сохраняем позицию скролла старой сетки (если есть)
         const oldGrid = this.target.querySelector('.datagrid') as HTMLElement;
         if (oldGrid) {
             this.savedScrollTop = oldGrid.scrollTop;
@@ -245,17 +242,33 @@ export class Visual implements IVisual {
 
         const existingGrids = this.target.querySelectorAll('.datagrid');
         if (existingGrids.length > 0) {
-            HeightResizer.cleanup();
             existingGrids.forEach(grid => grid.remove());
         }
 
         if (this.currentDataView?.matrix) {
             const valueSources = (this.currentDataView.matrix as any).valueSources;
+
+            // Обновляем кэш детей
+            this.updateChildrenCache(this.currentDataView.matrix.rows.root, '');
+
             const formattedMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
                 this.currentDataView.matrix,
                 valueSources,
-                this.expandedNodes
+                this.expandedNodes,
+                this.maxRowLevelsEver
             );
+
+            const totalRow = formattedMatrix.querySelector('tr.totalRow[data-level="0"]');
+            if (totalRow) {
+                this.cachedTotalRow = totalRow.cloneNode(true) as HTMLElement;
+            }
+
+            if (!totalRow && this.cachedTotalRow) {
+                const tbody = formattedMatrix.querySelector('tbody');
+                if (tbody) {
+                    tbody.appendChild(this.cachedTotalRow.cloneNode(true));
+                }
+            }
 
             if (this.settings?.hideEmptyCols?.hideColsLabel?.value) {
                 this.applyHideEmptyColumnsSetting(formattedMatrix);
@@ -268,7 +281,6 @@ export class Visual implements IVisual {
                 formattedMatrix.style.height = this.currentHeight + 'px';
             }
 
-            // Применяем настройки в правильном порядке
             applyBorderSettings(formattedMatrix, this.settings);
             applyValuesSettings(formattedMatrix, this.settings);
             applyColumnHeadersSettings(formattedMatrix, this.settings);
@@ -281,6 +293,7 @@ export class Visual implements IVisual {
 
             this.target.appendChild(formattedMatrix);
             this.applySpecificColumnStyles();
+            this.moveGrandTotalToBottom(formattedMatrix);
 
             const table = formattedMatrix.querySelector('table');
             if (table) {
@@ -290,41 +303,47 @@ export class Visual implements IVisual {
                 }
             }
 
-            // Восстанавливаем позицию скролла
             const newGrid = this.target.querySelector('.datagrid') as HTMLElement;
             if (newGrid) {
-                if (this.targetRowPath) {
-                    // Ищем строку, содержащую кнопку с нужным data-path
-                    const targetButton = newGrid.querySelector(`.expandCollapseButton[data-path="${this.targetRowPath}"]`);
-                    if (targetButton) {
-                        const targetRow = targetButton.closest('tr');
-                        if (targetRow) {
-                            targetRow.scrollIntoView({ block: 'center', behavior: 'auto' });
-                        }
-                    }
-                    this.targetRowPath = null; // сбрасываем после использования
-                } else if (this.savedScrollTop > 0 || this.savedScrollLeft > 0) {
+                if (!this.isExporting && (this.savedScrollTop > 0 || this.savedScrollLeft > 0)) {
                     newGrid.scrollTop = this.savedScrollTop;
                     newGrid.scrollLeft = this.savedScrollLeft;
                 }
+
+                if (!this.isExporting) {
+                    newGrid.addEventListener('scroll', () => {
+                        if (!this.canFetchMore || this.allDataLoaded) return;
+
+                        const scrollBottom = newGrid.scrollTop + newGrid.clientHeight;
+                        if (scrollBottom >= newGrid.scrollHeight - 20) {
+                            console.log('Scroll reached bottom, requesting more data...');
+                            this.canFetchMore = false;
+                            const accepted = this.host.fetchMoreData(true);
+                            if (!accepted) {
+                                console.log('Host rejected fetchMoreData, no more data.');
+                                this.canFetchMore = false;
+                                this.allDataLoaded = true;
+                            }
+                        }
+                    });
+                }
             }
 
+            // Обработчик кликов на кнопки +/-
             formattedMatrix.addEventListener('click', (e) => {
                 const target = e.target as HTMLElement;
                 const expandBtn = target.closest('.expandCollapseButton') as HTMLElement;
-                if (expandBtn) {
-                    e.stopPropagation();
-                    const path = expandBtn.dataset.path;
-                    if (path) {
-                        // Сохраняем путь строки для последующей прокрутки
-                        this.targetRowPath = path;
-                        if (this.expandedNodes.has(path)) {
-                            this.expandedNodes.delete(path);
-                        } else {
-                            this.expandedNodes.add(path);
-                        }
-                        this.renderVisualization(this.countRows(this.currentDataView));
+                if (!expandBtn) return;
+                e.stopPropagation();
+
+                const path = expandBtn.dataset.path;
+                if (path) {
+                    if (this.expandedNodes.has(path)) {
+                        this.expandedNodes.delete(path);   // свернуть
+                    } else {
+                        this.expandedNodes.add(path);      // раскрыть
                     }
+                    this.renderVisualization(this.countRows(this.currentDataView));
                 }
             });
 
@@ -334,6 +353,57 @@ export class Visual implements IVisual {
         }
     }
 
+    // Кэширование детей для экспорта и восстановления при Append
+    private updateChildrenCache(node: powerbi.DataViewMatrixNode, path: string): void {
+        if (!node) return;
+        if (node.children && node.children.length > 0) {
+            const nonSubtotalChildren = node.children.filter(c => !c.isSubtotal);
+            if (nonSubtotalChildren.length > 0) {
+                this.childrenCache.set(path, nonSubtotalChildren);
+            }
+        }
+        if (node.children) {
+            for (const child of node.children) {
+                const childPath = path ? `${path}-${child.levelSourceIndex || child.value}` : `${child.levelSourceIndex || child.value}`;
+                this.updateChildrenCache(child, childPath);
+            }
+        }
+    }
+
+    private applyChildrenCache(dataView: DataView): DataView {
+        if (!dataView.matrix || !dataView.matrix.rows || !dataView.matrix.rows.root) {
+            return dataView;
+        }
+        const newRoot = this.injectCachedChildren(dataView.matrix.rows.root, '');
+        return {
+            ...dataView,
+            matrix: {
+                ...dataView.matrix,
+                rows: {
+                    ...dataView.matrix.rows,
+                    root: newRoot
+                }
+            }
+        };
+    }
+
+    private injectCachedChildren(node: powerbi.DataViewMatrixNode, path: string): powerbi.DataViewMatrixNode {
+        const newNode: any = { ...node };
+        if (!newNode.children || newNode.children.length === 0 || newNode.children.every((c: any) => c.isSubtotal)) {
+            const cached = this.childrenCache.get(path);
+            if (cached && cached.length > 0) {
+                newNode.children = cached.map(c => ({ ...c }));
+            }
+        } else {
+            newNode.children = newNode.children.map((child: any) => {
+                const childPath = path ? `${path}-${child.levelSourceIndex || child.value}` : `${child.levelSourceIndex || child.value}`;
+                return this.injectCachedChildren(child, childPath);
+            });
+        }
+        return newNode;
+    }
+
+    // Экспорт
     private handleExportClick(cntRows: number): void {
         if (this.isExporting) return;
         console.log("=== Starting data export process ===");
@@ -342,36 +412,34 @@ export class Visual implements IVisual {
             this.exportButton.disabled = true;
             this.exportButton.textContent = "Loading data...";
         }
-        this.exportDataView(cntRows);
-    }
-
-    private requestMoreData(cntRows: number): void {
-        try {
-            console.log("Requesting more data via fetchMoreData(true)...");
-            const accepted = this.host.fetchMoreData(true);
-            console.log(`fetchMoreData returned: ${accepted}`);
-        } catch (error) {
-            console.error("Error in fetchMoreData:", error);
+        if (this.allDataLoaded) {
             this.exportDataView(cntRows);
-            this.resetExportState();
+            return;
+        }
+        this.requestMoreDataForExport();
+    }
+
+    private requestMoreDataForExport(): void {
+        try {
+            const accepted = this.host.fetchMoreData(true);
+            if (!accepted) {
+                console.log("All data collected for export.");
+                this.finalizeExport();
+            }
+        } catch (error) {
+            console.error("Error in fetchMoreData for export:", error);
+            this.finalizeExport();
         }
     }
 
-    private handleDataSegment(dataView: DataView, cntRows: number): void {
-        console.log(`[handleDataSegment] received. segment: ${dataView.metadata?.segment ? 'YES' : 'NO'}`);
-        const sizeEstimate = new Blob([JSON.stringify(this.currentDataView)]).size;
-        if (dataView.metadata?.segment) {
-            this.requestMoreData(cntRows);
-            console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
-        } else {
-            console.log("No segment → all data collected, scheduling export after render");
-            this.pendingExport = true;
-            console.log(`Estimated dataView size: ${(sizeEstimate / 1024 / 1024).toFixed(2)} MB`);
-        }
+    private finalizeExport(): void {
+        if (!this.isExporting) return;
+        this.renderVisualization(this.countRows(this.currentDataView));
+        this.exportDataView(this.countRows(this.currentDataView));
     }
 
     private exportDataView(cntRows: number): void {
-        console.log("Exporting data with all nodes expanded...");
+        console.log("Exporting data...");
         if (!this.currentDataView) {
             console.error("No data view found");
             this.resetExportState();
@@ -386,15 +454,24 @@ export class Visual implements IVisual {
         document.body.appendChild(tempContainer);
 
         try {
-            const valueSources = (this.currentDataView.matrix as any).valueSources;
-            const showNonGrandTotal = this.settings.subTotals.nonGrandTotal?.value ?? true;
+            const dataViewWithChildren = this.applyChildrenCache(this.currentDataView);
+            if (!dataViewWithChildren.matrix) {
+                console.warn("Matrix is undefined after cache");
+                this.resetExportState();
+                return;
+            }
+
+            const valueSources = (dataViewWithChildren.matrix as any).valueSources;
             const fullMatrix = MatrixDataviewHtmlFormatter.formatDataViewMatrix(
-                this.currentDataView.matrix,
+                dataViewWithChildren.matrix,
                 valueSources,
-                this.expandedNodes,
-                showNonGrandTotal,
+                undefined,
+                this.maxRowLevelsEver,
                 true
             );
+
+            this.applyNonGrandTotalSetting(fullMatrix);
+            this.moveGrandTotalToBottom(fullMatrix);
 
             if (this.settings?.hideEmptyCols?.hideColsLabel?.value) {
                 this.applyHideEmptyColumnsSetting(fullMatrix);
@@ -419,7 +496,7 @@ export class Visual implements IVisual {
 
     private resetExportState(): void {
         this.isExporting = false;
-        this.pendingExport = false;
+        this.allDataLoaded = true;
         if (this.exportButton) {
             this.exportButton.disabled = false;
             this.exportButton.textContent = "Export Data";

@@ -312,6 +312,7 @@
   margin: 0 0 15px 0;
   color: #666;
   font-size: 14px;
+  font-weight: bold;
 }
 .excel-download-modal-link-container {
   display: flex;
