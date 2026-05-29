@@ -6,7 +6,7 @@ export class MatrixDataviewHtmlFormatter {
     public static formatDataViewMatrix(
         matrix: powerbi.DataViewMatrix,
         valueSources?: powerbi.DataViewMetadataColumn[],
-        expandedNodes?: Set<string>,
+        collapsedNodes?: Set<string>,
         maxRowLevel: number = 0,
         forceExpandAll: boolean = false
     ): HTMLElement {
@@ -29,7 +29,7 @@ export class MatrixDataviewHtmlFormatter {
             matrix.columns,
             valueSources,
             columnSourceIndices,
-            expandedNodes,
+            collapsedNodes,
             '',
             forceExpandAll,
             true,
@@ -209,7 +209,7 @@ export class MatrixDataviewHtmlFormatter {
         columns: powerbi.DataViewHierarchy,
         valueSources?: powerbi.DataViewMetadataColumn[],
         columnSourceIndices?: number[],
-        expandedNodes?: Set<string>,
+        collapsedNodes?: Set<string>,
         path: string = '',
         forceExpandAll: boolean = false,
         showNonGrandTotal: boolean = true,
@@ -226,6 +226,11 @@ export class MatrixDataviewHtmlFormatter {
         if (level >= 0) {
             const trElement = document.createElement('tr');
             trElement.setAttribute('data-level', level.toString());
+
+            // Сохраняем identity для expand/collapse
+            if (root.identity) {
+                trElement.dataset.identity = JSON.stringify(root.identity);
+            }
 
             const thElement = document.createElement('th');
             thElement.setAttribute('class', 'formatRowNodes');
@@ -251,16 +256,17 @@ export class MatrixDataviewHtmlFormatter {
                 displayValue = root.value !== undefined ? root.value : "";
             }
 
-            // Кнопка показывается ТОЛЬКО если есть реальные дети в данных
-            const hasChildren = root.children && root.children.length > 0 && !root.isSubtotal;
+            // Показываем кнопку, если это не последний уровень и не подытог
+            const canHaveChildren = level < maxRowLevel - 1 && !root.isSubtotal;
+            const isCollapsed = root.isCollapsed === true;
 
-            if (hasChildren) {
+            if (canHaveChildren) {
                 const expandBtn = document.createElement('span');
                 expandBtn.className = 'expandCollapseButton';
                 expandBtn.dataset.path = path;
 
-                const isExpanded = forceExpandAll || expandedNodes?.has(path) === true;
-                expandBtn.innerHTML = isExpanded ? minusIcon : plusIcon;
+                // Значок: плюс, если узел свёрнут, иначе минус
+                expandBtn.innerHTML = isCollapsed ? plusIcon : minusIcon;
 
                 thElement.appendChild(expandBtn);
                 const spaceNode = document.createTextNode('\u00A0\u00A0');
@@ -306,14 +312,15 @@ export class MatrixDataviewHtmlFormatter {
             topElement.appendChild(trElement);
         }
 
-        // Рекурсивно показываем детей, если узел раскрыт или forceExpandAll
+        // Рекурсивно показываем детей, если они есть и узел не свёрнут (или forceExpandAll)
         if (root.children && root.children.length > 0 && !root.isSubtotal) {
-            const showChildren = forceExpandAll || (level === -1) || (expandedNodes?.has(path) === true);
+            const isCollapsed = root.isCollapsed === true;
+            const showChildren = forceExpandAll || !isCollapsed;
             if (showChildren) {
                 for (const child of root.children) {
                     const childPath = path ? `${path}-${child.levelSourceIndex || child.value}` : `${child.levelSourceIndex || child.value}`;
                     this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices,
-                        expandedNodes, childPath, forceExpandAll, showNonGrandTotal, maxRowLevel);
+                        collapsedNodes, childPath, forceExpandAll, showNonGrandTotal, maxRowLevel);
                 }
             }
         }

@@ -7,12 +7,11 @@ export declare class Visual implements IVisual {
     private target;
     private settings;
     private host;
+    private selectionManager;
     private currentDataView;
     private exportButton;
     private isExporting;
     private pendingExport;
-    private expandedNodes;
-    private childrenCache;
     private canFetchMore;
     private allDataLoaded;
     private maxRowLevelsEver;
@@ -23,7 +22,6 @@ export declare class Visual implements IVisual {
     private savedScrollTop;
     private savedScrollLeft;
     private cachedTotalRow;
-    private initialLoadDone;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
     getFormattingModel(): powerbi.visuals.FormattingModel;
@@ -31,10 +29,12 @@ export declare class Visual implements IVisual {
     private applySpecificColumnStyles;
     private countRows;
     private moveGrandTotalToBottom;
+    private findNodePath;
     private renderVisualization;
-    private updateChildrenCache;
-    private applyChildrenCache;
-    private injectCachedChildren;
+    /**
+     * Если текущий уровень – самый глубокий, сворачивает все развёрнутые узлы предпоследнего уровня.
+     */
+    private collapseAllOnDeepestLevel;
     private handleExportClick;
     private requestMoreDataForExport;
     private finalizeExport;

@@ -23,6 +23,12 @@
         "roles": ["Rows", "Columns"],
         "canDisableDrill": {}
     },
+    "expandCollapse": {
+            "roles": ["Rows"],
+            "addDataViewFlags": {
+            "defaultValue": true
+        }
+    },
     "dataViewMappings": [
         {
             "matrix": {
