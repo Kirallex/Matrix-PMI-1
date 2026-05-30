@@ -218,6 +218,7 @@ export class MatrixDataviewHtmlFormatter {
         if (!root) return;
 
         const level = (root.level !== undefined && root.level !== null) ? root.level : -1;
+        const sanitize = (s: string) => String(s).replace(/-/g, '~').replace(/ /g, '_');
 
         if (root.isSubtotal && level !== 0 && !showNonGrandTotal) {
             return;
@@ -318,7 +319,9 @@ export class MatrixDataviewHtmlFormatter {
             const showChildren = forceExpandAll || !isCollapsed;
             if (showChildren) {
                 for (const child of root.children) {
-                    const childPath = path ? `${path}-${child.levelSourceIndex || child.value}` : `${child.levelSourceIndex || child.value}`;
+                    const childValue = sanitize(child.levelSourceIndex !== undefined ? String(child.levelSourceIndex) : String(child.value));
+                    //const childPath = path ? `${path}-${child.levelSourceIndex || child.value}` : `${child.levelSourceIndex || child.value}`;
+                    const childPath = path ? `${path}-${childValue}` : childValue;
                     this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices,
                         collapsedNodes, childPath, forceExpandAll, showNonGrandTotal, maxRowLevel);
                 }

@@ -29,12 +29,11 @@ export declare class Visual implements IVisual {
     private applySpecificColumnStyles;
     private countRows;
     private moveGrandTotalToBottom;
-    private findNodePath;
-    private renderVisualization;
     /**
-     * Если текущий уровень – самый глубокий, сворачивает все развёрнутые узлы предпоследнего уровня.
+     * Строит путь из identity индексов: "0-1-2" и ищет узел.
      */
-    private collapseAllOnDeepestLevel;
+    private findNodeByPath;
+    private renderVisualization;
     private handleExportClick;
     private requestMoreDataForExport;
     private finalizeExport;

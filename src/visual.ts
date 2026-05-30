@@ -92,7 +92,6 @@ export class Visual implements IVisual {
             this.canFetchMore = true;
             this.allDataLoaded = false;
             this.renderVisualization(rowCount);
-            this.collapseAllOnDeepestLevel();
             return;
         }
 
@@ -110,7 +109,6 @@ export class Visual implements IVisual {
                     this.canFetchMore = false;
                 }
                 this.renderVisualization(rowCount);
-                this.collapseAllOnDeepestLevel();
             }
             return;
         }
@@ -191,20 +189,34 @@ export class Visual implements IVisual {
         tbody.appendChild(totalRow);
     }
 
-    private findNodePath(root: powerbi.DataViewMatrixNode, path: string): powerbi.DataViewMatrixNode[] | null {
+    /**
+     * Строит путь из identity индексов: "0-1-2" и ищет узел.
+     */
+    private findNodeByPath(root: powerbi.DataViewMatrixNode, path: string): powerbi.DataViewMatrixNode[] | null {
+        console.log(`[findNodeByPath] searching for path: "${path}"`);
         if (!path) return [root];
         const parts = path.split('-');
         const nodePath: powerbi.DataViewMatrixNode[] = [root];
         let current = root;
-        for (const part of parts) {
-            if (!current.children) return null;
-            const child = current.children.find(c =>
-                (c.levelSourceIndex !== undefined ? String(c.levelSourceIndex) : String(c.value)) === part
-            );
-            if (!child) return null;
+        for (const rawPart of parts) {
+            const part = rawPart.replace(/~/g, '-').replace(/_/g, ' ');   // декодируем
+            if (!current.children) {
+                console.warn(`[findNodeByPath] no children at part: ${part}`);
+                return null;
+            }
+            const child = current.children.find(c => {
+                const nodeValue = c.levelSourceIndex !== undefined ? String(c.levelSourceIndex) : String(c.value);
+                console.log(`[findNodeByPath] comparing part "${part}" with nodeValue "${nodeValue}"`);
+                return nodeValue === part;
+            });
+            if (!child) {
+                console.warn(`[findNodeByPath] child not found for part: ${part}`);
+                return null;
+            }
             nodePath.push(child);
             current = child;
         }
+        console.log(`[findNodeByPath] found path with ${nodePath.length} nodes`);
         return nodePath;
     }
 
@@ -314,6 +326,7 @@ export class Visual implements IVisual {
                 }
             }
 
+            // Обработчик кликов: использует путь из identityIndex
             formattedMatrix.addEventListener('click', (e) => {
                 const target = e.target as HTMLElement;
                 const expandBtn = target.closest('.expandCollapseButton') as HTMLElement;
@@ -321,11 +334,15 @@ export class Visual implements IVisual {
                 e.stopPropagation();
 
                 const path = expandBtn.dataset.path;
+                console.log(`[click] button path: ${path}`);
                 if (!path) return;
 
                 const rootNode = this.currentDataView.matrix!.rows!.root;
-                const nodePath = this.findNodePath(rootNode, path);
-                if (!nodePath) return;
+                const nodePath = this.findNodeByPath(rootNode, path);
+                if (!nodePath) {
+                    console.warn('[click] nodePath is null, aborting toggle');
+                    return;
+                }
 
                 const levels = this.currentDataView.matrix!.rows!.levels;
                 let builder = this.host.createSelectionIdBuilder();
@@ -333,7 +350,7 @@ export class Visual implements IVisual {
                     builder = builder.withMatrixNode(node, levels);
                 }
                 const selectionId: ISelectionId = builder.createSelectionId();
-
+                console.log('[click] toggling expand/collapse');
                 this.selectionManager.toggleExpandCollapse(selectionId);
             });
 
@@ -341,34 +358,6 @@ export class Visual implements IVisual {
                 this.currentHeight = newHeight;
             });
         }
-    }
-
-    /**
-     * Если текущий уровень – самый глубокий, сворачивает все развёрнутые узлы предпоследнего уровня.
-     */
-    private collapseAllOnDeepestLevel(): void {
-        if (!this.currentDataView?.matrix?.rows?.root) return;
-        const rowLevelsCount = this.currentDataView.matrix.rows.levels.length;
-        if (rowLevelsCount !== this.maxRowLevelsEver) return; // не самый глубокий
-
-        const root = this.currentDataView.matrix.rows.root;
-        const levels = this.currentDataView.matrix.rows.levels;
-
-        const traverse = (node: powerbi.DataViewMatrixNode) => {
-            if (node.children) {
-                for (const child of node.children) {
-                    if (child.isSubtotal) continue;
-                    if (child.level === this.maxRowLevelsEver - 2 && child.children && child.children.length > 0 && !child.isCollapsed) {
-                        const selectionId = this.host.createSelectionIdBuilder()
-                            .withMatrixNode(child, levels)
-                            .createSelectionId();
-                        this.selectionManager.toggleExpandCollapse(selectionId);
-                    }
-                    traverse(child);
-                }
-            }
-        };
-        traverse(root);
     }
 
     // Экспорт (без изменений)
