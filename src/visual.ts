@@ -72,6 +72,8 @@ export class Visual implements IVisual {
             options.dataViews[0]
         ) as VisualSettings;
 
+        console.log("currentDataView", this.currentDataView);
+
         const measures = this.currentDataView?.matrix?.columns?.levels?.find(level =>
             level.sources.some(source => source.isMeasure)
         )?.sources || [];
@@ -193,7 +195,7 @@ export class Visual implements IVisual {
      * Строит путь из identity индексов: "0-1-2" и ищет узел.
      */
     private findNodeByPath(root: powerbi.DataViewMatrixNode, path: string): powerbi.DataViewMatrixNode[] | null {
-        console.log(`[findNodeByPath] searching for path: "${path}"`);
+        //console.log(`[findNodeByPath] searching for path: "${path}"`);
         if (!path) return [root];
         const parts = path.split('-');
         const nodePath: powerbi.DataViewMatrixNode[] = [root];
@@ -201,22 +203,22 @@ export class Visual implements IVisual {
         for (const rawPart of parts) {
             const part = rawPart.replace(/~/g, '-').replace(/_/g, ' ');   // декодируем
             if (!current.children) {
-                console.warn(`[findNodeByPath] no children at part: ${part}`);
+                //console.warn(`[findNodeByPath] no children at part: ${part}`);
                 return null;
             }
             const child = current.children.find(c => {
                 const nodeValue = c.levelSourceIndex !== undefined ? String(c.levelSourceIndex) : String(c.value);
-                console.log(`[findNodeByPath] comparing part "${part}" with nodeValue "${nodeValue}"`);
+                //console.log(`[findNodeByPath] comparing part "${part}" with nodeValue "${nodeValue}"`);
                 return nodeValue === part;
             });
             if (!child) {
-                console.warn(`[findNodeByPath] child not found for part: ${part}`);
+                //console.warn(`[findNodeByPath] child not found for part: ${part}`);
                 return null;
             }
             nodePath.push(child);
             current = child;
         }
-        console.log(`[findNodeByPath] found path with ${nodePath.length} nodes`);
+        //console.log(`[findNodeByPath] found path with ${nodePath.length} nodes`);
         return nodePath;
     }
 
@@ -334,13 +336,13 @@ export class Visual implements IVisual {
                 e.stopPropagation();
 
                 const path = expandBtn.dataset.path;
-                console.log(`[click] button path: ${path}`);
+                //console.log(`[click] button path: ${path}`);
                 if (!path) return;
 
                 const rootNode = this.currentDataView.matrix!.rows!.root;
                 const nodePath = this.findNodeByPath(rootNode, path);
                 if (!nodePath) {
-                    console.warn('[click] nodePath is null, aborting toggle');
+                    //console.warn('[click] nodePath is null, aborting toggle');
                     return;
                 }
 
@@ -350,7 +352,7 @@ export class Visual implements IVisual {
                     builder = builder.withMatrixNode(node, levels);
                 }
                 const selectionId: ISelectionId = builder.createSelectionId();
-                console.log('[click] toggling expand/collapse');
+                //console.log('[click] toggling expand/collapse');
                 this.selectionManager.toggleExpandCollapse(selectionId);
             });
 

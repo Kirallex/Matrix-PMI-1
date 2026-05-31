@@ -8,7 +8,8 @@ export class MatrixDataviewHtmlFormatter {
         valueSources?: powerbi.DataViewMetadataColumn[],
         collapsedNodes?: Set<string>,
         maxRowLevel: number = 0,
-        forceExpandAll: boolean = false
+        forceExpandAll: boolean = false,
+        locale: string = 'ru-RU'
     ): HTMLElement {
         const htmlElement = document.createElement('div');
         htmlElement.classList.add('datagrid');
@@ -22,6 +23,14 @@ export class MatrixDataviewHtmlFormatter {
             columnSourceIndices = leafNodes.map(node => node.levelSourceIndex !== undefined ? node.levelSourceIndex : -1);
         }
 
+        // Извлекаем форматы для уровней строк (для дат)
+        const rowLevels = matrix.rows.levels;
+        const rowLevelFormats: string[] = [];
+        for (let i = 0; i < rowLevels.length; i++) {
+            const source = rowLevels[i]?.sources?.[0];
+            rowLevelFormats.push(source?.format || '');
+        }
+
         this.formatColumnHeaders(matrix.columns, matrix.rows, theadElement);
         this.formatRowNodes(
             matrix.rows.root,
@@ -33,7 +42,9 @@ export class MatrixDataviewHtmlFormatter {
             '',
             forceExpandAll,
             true,
-            maxRowLevel
+            maxRowLevel,
+            locale,
+            rowLevelFormats
         );
 
         let borderDiv = theadElement.querySelector('.thead-border');
@@ -213,12 +224,13 @@ export class MatrixDataviewHtmlFormatter {
         path: string = '',
         forceExpandAll: boolean = false,
         showNonGrandTotal: boolean = true,
-        maxRowLevel: number = 0
+        maxRowLevel: number = 0,
+        locale: string = 'ru-RU',
+        rowLevelFormats?: string[]
     ) {
         if (!root) return;
 
         const level = (root.level !== undefined && root.level !== null) ? root.level : -1;
-        const sanitize = (s: string) => String(s).replace(/-/g, '~').replace(/ /g, '_');
 
         if (root.isSubtotal && level !== 0 && !showNonGrandTotal) {
             return;
@@ -228,7 +240,6 @@ export class MatrixDataviewHtmlFormatter {
             const trElement = document.createElement('tr');
             trElement.setAttribute('data-level', level.toString());
 
-            // Сохраняем identity для expand/collapse
             if (root.identity) {
                 trElement.dataset.identity = JSON.stringify(root.identity);
             }
@@ -249,15 +260,32 @@ export class MatrixDataviewHtmlFormatter {
             let displayValue = "";
             if (root.isSubtotal) {
                 displayValue = "Total";
-            } else if (root.levelSourceIndex !== undefined) {
-                displayValue = root.levelSourceIndex.value !== undefined ?
-                    root.levelSourceIndex.value :
-                    (root.levelValues && root.levelValues[0] ? root.levelValues[0].value : "");
             } else {
-                displayValue = root.value !== undefined ? root.value : "";
+                let rawValue: any = undefined;
+                if (root.levelSourceIndex !== undefined && root.levelValues) {
+                    rawValue = root.levelValues[0].value;
+                } else if (root.value !== undefined) {
+                    rawValue = root.value;
+                }
+
+                if (rawValue !== undefined) {
+                    if (rawValue instanceof Date) {
+                        const formatStr = (rowLevelFormats && rowLevelFormats[level]) ? rowLevelFormats[level] : undefined;
+                        const options: any = {
+                            value: rawValue,
+                            cultureSelector: 'ru-RU'
+                        };
+                        if (formatStr) {
+                            options.format = formatStr;
+                        }
+                        const formatter = valueFormatter.create(options);
+                        displayValue = formatter.format(rawValue);
+                    } else {
+                        displayValue = String(rawValue);
+                    }
+                }
             }
 
-            // Показываем кнопку, если это не последний уровень и не подытог
             const canHaveChildren = level < maxRowLevel - 1 && !root.isSubtotal;
             const isCollapsed = root.isCollapsed === true;
 
@@ -266,7 +294,6 @@ export class MatrixDataviewHtmlFormatter {
                 expandBtn.className = 'expandCollapseButton';
                 expandBtn.dataset.path = path;
 
-                // Значок: плюс, если узел свёрнут, иначе минус
                 expandBtn.innerHTML = isCollapsed ? plusIcon : minusIcon;
 
                 thElement.appendChild(expandBtn);
@@ -313,20 +340,24 @@ export class MatrixDataviewHtmlFormatter {
             topElement.appendChild(trElement);
         }
 
-        // Рекурсивно показываем детей, если они есть и узел не свёрнут (или forceExpandAll)
         if (root.children && root.children.length > 0 && !root.isSubtotal) {
             const isCollapsed = root.isCollapsed === true;
             const showChildren = forceExpandAll || !isCollapsed;
             if (showChildren) {
                 for (const child of root.children) {
-                    const childValue = sanitize(child.levelSourceIndex !== undefined ? String(child.levelSourceIndex) : String(child.value));
-                    //const childPath = path ? `${path}-${child.levelSourceIndex || child.value}` : `${child.levelSourceIndex || child.value}`;
+                    const childValue = this.sanitizePathSegment(
+                        child.levelSourceIndex !== undefined ? String(child.levelSourceIndex) : String(child.value)
+                    );
                     const childPath = path ? `${path}-${childValue}` : childValue;
                     this.formatRowNodes(child, topElement, columns, valueSources, columnSourceIndices,
-                        collapsedNodes, childPath, forceExpandAll, showNonGrandTotal, maxRowLevel);
+                        collapsedNodes, childPath, forceExpandAll, showNonGrandTotal, maxRowLevel, locale, rowLevelFormats);
                 }
             }
         }
+    }
+
+    private static sanitizePathSegment(segment: string): string {
+        return segment.replace(/-/g, '~').replace(/ /g, '_');
     }
 
     private static addDataCells(
