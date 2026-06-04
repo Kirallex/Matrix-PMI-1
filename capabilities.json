@@ -38,7 +38,7 @@
                     },
                 "dataReductionAlgorithm": {
                         "window": {
-                        "count": 10000
+                        "count": 1000
                         }
                 }
                 },
@@ -48,7 +48,7 @@
                     },
                 "dataReductionAlgorithm": {
                         "top": {
-                        "count": 10000
+                        "count": 1000
                         }
                 }
                 },

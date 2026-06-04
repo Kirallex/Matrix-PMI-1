@@ -72,7 +72,7 @@ export class Visual implements IVisual {
             options.dataViews[0]
         ) as VisualSettings;
 
-        console.log("currentDataView", this.currentDataView);
+        // console.log("currentDataView", this.currentDataView);
 
         const measures = this.currentDataView?.matrix?.columns?.levels?.find(level =>
             level.sources.some(source => source.isMeasure)
@@ -371,7 +371,8 @@ export class Visual implements IVisual {
             this.exportButton.disabled = true;
             this.exportButton.textContent = "Loading data...";
         }
-        if (this.allDataLoaded) {
+        // Если все данные уже загружены или сегментов больше нет
+        if (this.allDataLoaded || !this.currentDataView.metadata?.segment) {
             this.exportDataView(cntRows);
             return;
         }
@@ -382,7 +383,7 @@ export class Visual implements IVisual {
         try {
             const accepted = this.host.fetchMoreData(true);
             if (!accepted) {
-                console.log("All data collected for export.");
+                console.log("fetchMoreData returned false, finalizing export.");
                 this.finalizeExport();
             }
         } catch (error) {
