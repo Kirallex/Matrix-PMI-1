@@ -252,10 +252,15 @@ class RowHeadersGroup extends FormattingSettingsCard {
     });
     public textColor = new formattingSettings.ColorPicker({ name: "textColor", displayName: "Text color", value: { value: "#1E2323" } });
     public backgroundColor = new formattingSettings.ColorPicker({ name: "backgroundColor", displayName: "Background color", value: { value: "#FFFFFF" } });
+    public brandedRowColor = new formattingSettings.ToggleSwitch({
+        name: "brandedRowColor",
+        displayName: "Branded row color",
+        value: true
+    });
     public textAlignment = new formattingSettings.AlignmentGroup({ name: "textAlignment", displayName: "Alignment", value: "left", mode: powerbi.visuals.AlignmentGroupMode.Horizonal });
     public name = "rowHeadersGroup";
     public displayName = "Text";
-    public slices = [this.font, this.textColor, this.backgroundColor, this.textAlignment];
+    public slices = [this.font, this.textColor, this.backgroundColor, this.brandedRowColor, this.textAlignment];
 }
 class RowHeadersCard extends FormattingSettingsCompositeCard {
     public rowHeadersGroup: RowHeadersGroup;

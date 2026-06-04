@@ -110,10 +110,11 @@ declare class RowHeadersGroup extends FormattingSettingsCard {
     font: formattingSettings.FontControl;
     textColor: formattingSettings.ColorPicker;
     backgroundColor: formattingSettings.ColorPicker;
+    brandedRowColor: formattingSettings.ToggleSwitch;
     textAlignment: formattingSettings.AlignmentGroup;
     name: string;
     displayName: string;
-    slices: (formattingSettings.ColorPicker | formattingSettings.FontControl | formattingSettings.AlignmentGroup)[];
+    slices: (formattingSettings.ColorPicker | formattingSettings.FontControl | formattingSettings.ToggleSwitch | formattingSettings.AlignmentGroup)[];
 }
 declare class RowHeadersCard extends FormattingSettingsCompositeCard {
     rowHeadersGroup: RowHeadersGroup;

@@ -26,16 +26,40 @@ export function applyRowHeadersSettings(container: HTMLElement, settings: Visual
     });
 
     // Цвета
-    const textColor = rowHeaders.textColor.value.value;
-    const bgColor = rowHeaders.backgroundColor.value.value;
-    rowHeaderCells.forEach(cell => {
-        const htmlCell = cell as HTMLElement;
-        htmlCell.style.setProperty('color', textColor, 'important');
-        htmlCell.style.setProperty('background-color', bgColor, 'important');
-    });
+    const branded = rowHeaders.brandedRowColor.value;
+    if (branded) {
+        // Используем цвета из ValuesGroup с учётом чётности строк
+        const values = settings.values?.valuesGroup;
+        const rows = table.querySelectorAll('tbody tr');
+        const rowIndexMap = new Map<HTMLElement, number>();
+        rows.forEach((row, index) => {
+            rowIndexMap.set(row as HTMLElement, index);
+        });
 
-    // Выравнивание текста – применяем к внутреннему span .row-header-text
-    const alignment = rowHeaders.textAlignment.value; // "left", "center", "right"
+        rowHeaderCells.forEach(cell => {
+            const htmlCell = cell as HTMLElement;
+            const parentRow = cell.closest('tr') as HTMLElement;
+            const rowIndex = rowIndexMap.get(parentRow);
+            if (rowIndex !== undefined && values) {
+                const isOddRow = (rowIndex % 2 === 0);
+                const textColor = isOddRow ? values.textColor.value.value : values.altTextColor.value.value;
+                const bgColor = isOddRow ? values.backgroundColor.value.value : values.altBackgroundColor.value.value;
+                htmlCell.style.setProperty('color', textColor, 'important');
+                htmlCell.style.setProperty('background-color', bgColor, 'important');
+            }
+        });
+    } else {
+        const textColor = rowHeaders.textColor.value.value;
+        const bgColor = rowHeaders.backgroundColor.value.value;
+        rowHeaderCells.forEach(cell => {
+            const htmlCell = cell as HTMLElement;
+            htmlCell.style.setProperty('color', textColor, 'important');
+            htmlCell.style.setProperty('background-color', bgColor, 'important');
+        });
+    }
+
+    // Выравнивание текста
+    const alignment = rowHeaders.textAlignment.value;
     rowHeaderCells.forEach(cell => {
         const textSpan = cell.querySelector('.row-header-text') as HTMLElement;
         if (textSpan) {

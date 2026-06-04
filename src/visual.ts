@@ -72,7 +72,7 @@ export class Visual implements IVisual {
             options.dataViews[0]
         ) as VisualSettings;
 
-        // console.log("currentDataView", this.currentDataView);
+        console.log("currentDataView", this.currentDataView);
 
         const measures = this.currentDataView?.matrix?.columns?.levels?.find(level =>
             level.sources.some(source => source.isMeasure)
@@ -85,6 +85,7 @@ export class Visual implements IVisual {
         const rootNode = this.currentDataView.matrix?.rows?.root;
         const hasChildFields = rootNode?.childIdentityFields && rootNode.childIdentityFields.length > 0;
         const potentialMax = rowLevelsCount + (hasChildFields ? 1 : 0);
+        console.log("this.maxRowLevelsEver", this.maxRowLevelsEver);
         this.maxRowLevelsEver = Math.max(this.maxRowLevelsEver, potentialMax);
 
         const rowCount = this.countRows(this.currentDataView);

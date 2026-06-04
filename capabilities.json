@@ -230,7 +230,10 @@
                 "underline": { "type": { "bool": true } },
                 "textColor": { "type": { "fill": { "solid": { "color": true } } } },
                 "backgroundColor": { "type": { "fill": { "solid": { "color": true } } } },
-                "textAlignment": { "type": { "enumeration": [] } }
+                "textAlignment": { "type": { "enumeration": [] } },
+                "brandedRowColor": {
+                    "type": { "bool": true }
+                }
             }
         },
         "columnGrandTotal": {

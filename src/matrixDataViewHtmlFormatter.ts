@@ -286,14 +286,15 @@ export class MatrixDataviewHtmlFormatter {
                 }
             }
 
-            const canHaveChildren = level < maxRowLevel - 1 && !root.isSubtotal;
+            const canHaveChildren = level < maxRowLevel - 2 && !root.isSubtotal; //level < maxRowLevel - 1 && !root.isSubtotal;
             const isCollapsed = root.isCollapsed === true;
 
             if (canHaveChildren) {
                 const expandBtn = document.createElement('span');
                 expandBtn.className = 'expandCollapseButton';
                 expandBtn.dataset.path = path;
-
+                expandBtn.setAttribute("level-custom", level);
+                expandBtn.setAttribute("max-Row-Level", maxRowLevel.toString());
                 expandBtn.innerHTML = isCollapsed ? plusIcon : minusIcon;
 
                 thElement.appendChild(expandBtn);
