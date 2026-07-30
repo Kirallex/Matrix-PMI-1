@@ -85,7 +85,6 @@ export class Visual implements IVisual {
         const rootNode = this.currentDataView.matrix?.rows?.root;
         const hasChildFields = rootNode?.childIdentityFields && rootNode.childIdentityFields.length > 0;
         const potentialMax = rowLevelsCount + (hasChildFields ? 1 : 0);
-        //console.log("this.maxRowLevelsEver", this.maxRowLevelsEver);
         this.maxRowLevelsEver = Math.max(this.maxRowLevelsEver, potentialMax);
 
         const rowCount = this.countRows(this.currentDataView);

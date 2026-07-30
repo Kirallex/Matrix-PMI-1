@@ -404,10 +404,28 @@ export class MatrixDataviewHtmlFormatter {
         return totalInfo;
     }
 
-    private static formatValue(rawValue: number, valueSourceIndex: number, valueSources?: any[]): string {
+    private static formatValue(rawValue: any, valueSourceIndex: number, valueSources?: any[]): string {
+        // 1. Обработка null/undefined
+        if (rawValue == null) {
+            return '';
+        }
+
+        // 2. Если значение – строка, возвращаем её без изменений
+        if (typeof rawValue === 'string') {
+            return rawValue;
+        }
+
+        // 3. Если значение – не число (например, boolean, объект и т.п.) – приводим к строке
+        if (typeof rawValue !== 'number') {
+            return String(rawValue);
+        }
+
+        // 4. Далее идёт существующая логика для чисел
+        // (она же обрабатывает и даты, если они приходят как число)
         if (valueSourceIndex === undefined || valueSourceIndex < 0 || !valueSources || !valueSources[valueSourceIndex]) {
             return rawValue?.toLocaleString('ru-RU') || '';
         }
+
         const valueSource = valueSources[valueSourceIndex];
 
         try {
